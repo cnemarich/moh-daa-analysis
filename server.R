@@ -173,8 +173,11 @@ shinyServer(function(input, output, session) {
         mainPanel(tabsetPanel(
           id = "main-panel",
           type = "tabs",
-          tabPanel("Prioritization", dataTableOutput("prio_table")),
-          tabPanel("Partners/Agencies", dataTableOutput("partners_table"))
+          tabPanel("Discordance Graph", dataTableOutput("discordance_graph")),
+          tabPanel("Site Alignment Analysis", dataTableOutput("site_analysis")),
+          tabPanel("Indicator Analysis", dataTableOutput("indicator_analysis")),
+          tabPanel("Pivot Table", dataTableOutput("moh_pivot")),
+          tabPanel("Country Comparison", dataTableOutput("country_comparison"))
         ))
       ))
     }
