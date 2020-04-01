@@ -134,8 +134,8 @@ shinyServer(function(input, output, session) {
         )
       ))
     } else {
-      wiki_url <- a("Datapack Wiki",
-                    href = "https://github.com/pepfar-datim/Data-Pack-Feedback/wiki",
+      wiki_url <- a("MoH Data Alignment Support Site",
+                    href = "https://datim.zendesk.com/hc/en-us/categories/360000927432-PEPFAR-MoH-Data-Alignment-Activity",
                     target = "_blank")
       
       fluidPage(tags$head(
