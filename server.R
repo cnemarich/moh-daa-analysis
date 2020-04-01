@@ -157,7 +157,17 @@ shinyServer(function(input, output, session) {
           tags$hr(),
           actionButton("fetch","Get Data"),
           tags$hr(),
-          downloadButton("downloadReport", "Download Report"),
+          downloadButton("downloadHTS", "HTS_TST analysis"),
+          tags$hr(),
+          downloadButton("downloadPMTCT", "PMTCT analysis"),
+          tags$hr(),
+          downloadButton("downloadTBPREV", "TB_PREV analysis"),
+          tags$hr(),
+          downloadButton("downloadTXCURR", "TX_CURR analysis"),
+          tags$hr(),
+          downloadButton("downloadTXNEW", "TX_NEW analysis"),
+          tags$hr(),
+          downloadButton("downloadRaw", "Raw results data"),
           width = 2
         ),
         mainPanel(tabsetPanel(
