@@ -12,11 +12,13 @@ shinyServer(function(input, output, session) {
   ready <- reactiveValues(ok = FALSE)
   
   observeEvent(input$fetch, {
+    shinyjs::disable("ou")
     shinyjs::disable("fetch")
     ready$ok <- TRUE
   })
   
   observeEvent(input$reset_input, {
+    shinyjs::enable("ou")
     shinyjs::enable("fetch")
     shinyjs::disable("downloadHTS")
     shinyjs::disable("downloadPMTCT")
@@ -51,6 +53,7 @@ shinyServer(function(input, output, session) {
       
       #sites<-analysis_getSitesTable(input$ou)
       indicators<-analysis_getIndicatorsTable(input$ou)
+      shinyjs::disable("ou")
       shinyjs::disable("fetch")
       shinyjs::enable("downloadHTS")
       shinyjs::enable("downloadPMTCT")
