@@ -104,11 +104,7 @@ analysis_getIndicatorsTable<-function(ou_uid="cDGPF739ZZr") {
     stringr::str_replace_all( "[\r\n]" , "") %>% 
     URLencode(.)
   
-  print("Url generated")
-  
   df <- d2_analyticsResponse(url)
-  
-  print("analytics response complete")
   
   if (is.null(df)) { return(NULL)}
   
