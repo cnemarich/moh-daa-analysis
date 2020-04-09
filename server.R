@@ -97,12 +97,14 @@ shinyServer(function(input, output, session) {
   
   output$site_table <- DT::renderDataTable({
     
-    d <- memo_data() %>% purrr::pluck("prio")
     d <- analysis_data()
     
     if (!inherits(d, "error") & !is.null(d)) {
       
-      DT::datatable(d,options = list(pageLength = 50, 
+      table_formatted <- d %>%
+        purrr::pluck("sites")
+      
+      DT::datatable(table_formatted,options = list(pageLength = 50, 
                                      columnDefs = list(list(className = 'dt-right', 
                                                             targets = 3:8)))) %>% 
         formatCurrency(3:8, '',digits =0)
