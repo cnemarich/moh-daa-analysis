@@ -257,6 +257,12 @@ shinyServer(function(input, output, session) {
       openxlsx::writeDataTable(wb = wb,
                                sheet = "Prioritization",x = d$prio)
       d <- analysis_data() %>%
+        purrr::pluck("indicators") %>%
+        dplyr::filter(indicator = "HTS_TST") %>%
+        dplyr::select(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,
+                      MOH,PEPFAR,Reported_on_by_both,Reported_by,Reported_higher,
+                      Difference,Weighting,Weighted_diff,Count_of_sites_reporting_both,
+                      PEPFAR_sum_of_sites_reporting_both,Site_hierarchy)
       
       
       openxlsx::addWorksheet(wb,"Partners_Agencies")
