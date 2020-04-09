@@ -90,15 +90,45 @@ shinyServer(function(input, output, session) {
   
   output$indicator_table <- DT::renderDataTable({
     
-    d <- memo_data() %>% purrr::pluck("partners")
     d <- analysis_data()
     
     if (!inherits(d, "error") & !is.null(d)) {
       
-      DT::datatable(d,options = list(pageLength = 50, 
-                                     columnDefs = list(list(className = 'dt-right', 
-                                                            targets = 3:dim(d)[2])))) %>% 
-        formatCurrency(3:dim(d)[2], '',digits =0)
+      table_formatted <- d %>% 
+        purrr::pluck("indicators")
+      
+      DT::datatable(table_formatted,
+                    options = list(pageLength = 50, columnDefs = list(list(
+                      className = 'dt-right', targets = 2),
+                      list(
+                        className = 'dt-right', targets = 3),
+                      list(
+                        className = 'dt-right', targets = 4),
+                      list(
+                        className = 'dt-right', targets = 5),
+                      list(
+                        className = 'dt-right', targets = 6),
+                      list(
+                        className = 'dt-right', targets = 7),
+                      list(
+                        className = 'dt-right', targets = 8),
+                      list(
+                        className = 'dt-right', targets = 9),
+                      list(
+                        className = 'dt-right', targets = 10),
+                      list(
+                        className = 'dt-right', targets = 11),
+                      list(
+                        className = 'dt-right', targets = 12),
+                      list(
+                        className = 'dt-right', targets = 13),
+                      list(
+                        className = 'dt-right', targets = 14),
+                      list(
+                        className = 'dt-right', targets = 15),
+                      list(
+                        className = 'dt-right', targets = 16)
+                    )))
       
     } else
     {
