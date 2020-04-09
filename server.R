@@ -245,9 +245,9 @@ shinyServer(function(input, output, session) {
     filename = function() {
       
       
-      prefix <-"cop_20_approval_memo_"
+      suffix <- "analysis_workbook_"
       date<-format(Sys.time(),"%Y%m%d_%H%M%S")
-      paste0(paste(prefix,date,sep="_"),".xlsx")
+      paste0(paste(input$ou,indicator,prefix,date,sep="_"),".xlsx")
       
     },
     content = function(file) {
