@@ -11,6 +11,11 @@ shinyServer(function(input, output, session) {
   
   ready <- reactiveValues(ok = FALSE)
   
+  observeEvent(input$fetch, {
+    shinyjs::disable("fetch")
+    ready$ok <- TRUE
+  })
+  
   fetch <- function() {
     
     shinyjs::disable("downloadReport")
@@ -99,11 +104,6 @@ shinyServer(function(input, output, session) {
     {
       NULL
     }
-  })
-  
-  observeEvent(input$fetch, {
-    shinyjs::disable("fetch")
-    ready$ok <- TRUE
   })
   
   output$uiLogin <- renderUI({
