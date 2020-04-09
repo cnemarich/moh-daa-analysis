@@ -219,7 +219,7 @@ shinyServer(function(input, output, session) {
           actionButton("fetch","Get Data"),
           tags$hr(),
           "Download Analysis Workbooks",
-          downloadButton("downloadHTS", "HTS_TST analysis", style = "width:100%;text-align: left;"),
+          disabled(downloadButton("downloadHTS", "HTS_TST analysis", style = "width:100%;text-align: left;"),
           downloadButton("downloadPMTCT", "PMTCT analysis", style = "width:100%;text-align: left;"),
           downloadButton("downloadTBPREV", "TB_PREV analysis", style = "width:100%;text-align: left;"),
           downloadButton("downloadTXCURR", "TX_CURR analysis", style = "width:100%;text-align: left;"),
@@ -227,7 +227,7 @@ shinyServer(function(input, output, session) {
           tags$hr(),
           downloadButton("downloadRaw", "Raw results data", style = "width:100%;text-align: left;"),
           tags$hr(),
-          actionButton("reset_input","Reset Inputs"),
+          actionButton("reset_input","Reset Inputs")),
           width = 2
         ),
         mainPanel(tabsetPanel(
