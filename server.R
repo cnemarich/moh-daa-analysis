@@ -30,7 +30,14 @@ shinyServer(function(input, output, session) {
   
   fetch <- function() {
     
-    shinyjs::disable("downloadReport")
+    shinyjs::disable("downloadHTS")
+    shinyjs::disable("downloadPMTCT")
+    shinyjs::disable("downloadTBPREV")
+    shinyjs::disable("downloadTXNEW")
+    shinyjs::disable("downloadTXCURR")
+    shinyjs::disable("downloadRaw")
+    shinyjs::disable("reset_input")
+
     if (!user_input$authenticated | !ready$ok)  {
       return(NULL)
     } else {
@@ -42,13 +49,19 @@ shinyServer(function(input, output, session) {
         btn_labels= NA
       )
       
-      prio<-memo_getPrioritizationTable(input$ou)
-      partners<-memo_getPartnersTable(input$ou)
-      shinyjs::enable("fetch")
-      shinyjs::enable("downloadReport")
+      #sites<-analysis_getSitesTable(input$ou)
+      indicators<-analysis_getIndicatorsTable(input$ou)
+      shinyjs::disable("fetch")
+      shinyjs::enable("downloadHTS")
+      shinyjs::enable("downloadPMTCT")
+      shinyjs::enable("downloadTBPREV")
+      shinyjs::enable("downloadTXNEW")
+      shinyjs::enable("downloadTXCURR")
+      shinyjs::enable("downloadRaw")
+      shinyjs::enable("reset_input")
       closeSweetAlert(session)
-      my_data<-list(prio=prio,partners=partners)
-      if (is.null(my_data$prio) & is.null(my_data$partners)) {
+      my_data<-list(sites=sites,indicators=indicators)
+      if (is.null(my_data$sites) & is.null(my_data$indicators)) {
         sendSweetAlert(
           session,
           title = "Oops!",
