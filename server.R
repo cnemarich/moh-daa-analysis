@@ -70,7 +70,7 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  output$prio_table <- DT::renderDataTable({
+  output$site_table <- DT::renderDataTable({
     
     d <- memo_data() %>% purrr::pluck("prio")
     d <- analysis_data()
@@ -88,7 +88,7 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  output$partners_table <- DT::renderDataTable({
+  output$indicator_table <- DT::renderDataTable({
     
     d <- memo_data() %>% purrr::pluck("partners")
     d <- analysis_data()
@@ -184,7 +184,7 @@ shinyServer(function(input, output, session) {
     
   })
   
-  output$downloadReport <- downloadHandler(
+  output$downloadHTS <- downloadHandler(
     filename = function() {
       
       
