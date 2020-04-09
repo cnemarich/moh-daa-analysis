@@ -16,6 +16,18 @@ shinyServer(function(input, output, session) {
     ready$ok <- TRUE
   })
   
+  observeEvent(input$reset_input, {
+    shinyjs::enable("fetch")
+    shinyjs::disable("downloadHTS")
+    shinyjs::disable("downloadPMTCT")
+    shinyjs::disable("downloadTBPREV")
+    shinyjs::disable("downloadTXNEW")
+    shinyjs::disable("downloadTXCURR")
+    shinyjs::disable("downloadRaw")
+    shinyjs::disable("reset_input")
+    ready$ok <- FALSE
+  })
+  
   fetch <- function() {
     
     shinyjs::disable("downloadReport")
