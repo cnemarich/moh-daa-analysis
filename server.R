@@ -3,6 +3,8 @@ library(shinyjs)
 require(datimvalidation)
 require(shinyWidgets)
 require(magrittr)
+require(ggplot2)
+require(rpivotTable)
 source("./utils.R")
 
 shinyServer(function(input, output, session) {

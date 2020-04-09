@@ -17,11 +17,22 @@ flog.appender(appender.file(config$log_path), name="cop_memo")
 
 getUserOperatingUnits<-function(uid) {
   
+  countryUID <- c('l1KFEXKI4Dg','Qh4XMQJhbk8','bQQJe0cC1eD','ds0ADyc9UCU',
+                   'ANN4YCOufcP','V0qMZH29CtN','IH1kchw86uA','JTypsdEUNPw',
+                   'HfVjCurKxh2','qllxzIjjurr','lZsCb6y0KDX','h11OyvlPxpJ','FFVkaV9Zk1S',
+                   'PqlFzhuPcF1','XtxUYCsDWrR','cDGPF739ZZr','WLG0z5NxQs8','mdXu6iCbn2G',
+                   'FETQ6OmnsKB','ligZVIYs2rL','YM6xn5QxNpY','f5RoebaDLMx','a71G4Gtcttv')
+  
+  facilityLevel <- c(6,7,6,7,6,6,7,7,7,6,7,6,6,6,7,7,7,7,7,6,6,6,6)
+  
+  df <- data.frame(countryUID,facilityLevel)
+  
   ous<-datapackr::configFile %>% 
-    dplyr::select(DataPack_name,model_uid,countryName,countryUID) %>% 
+    dplyr::select(countryName,countryUID) %>% 
     dplyr::filter(!stringr::str_detect(countryName,"_Military")) %>% 
     dplyr::distinct() %>% 
-    dplyr::arrange(countryName)
+    dplyr::arrange(countryName) %>%
+    dplyr::inner_join(df)
   
   if ( is.null(uid) ) {return("")} 
   
@@ -68,177 +79,64 @@ d2_analyticsResponse <- function(url,remapCols=TRUE) {
     }
 }
 
-memo_getPrioritizationTable <- function(ou_uid="cDGPF739ZZr") {
-  
-  base_url<-config$baseurl
-  
-  url<-glue::glue("{base_url}api/29/analytics?dimension=riR005xJPsS:IzmZerN7tDN;AHMMjoPYta6;b1X6pxMHgs6;
-                  pibJV72pMyW;ATX2xv8PsrX;CJYtvFbjeG2;p0JrTY2hLii&dimension=dx:pyD3q4hsocw;
-                  mpoYh9odYG5;DJF6GKEa9Jw;uzrCoPjSHAM;LejpyPTzSop;yoaC47zCSML;gVjB3hNi3r6;
-                  o8zSyUaIPRR;TadWkOKgCYt;dIhPb5PaNak;niYlMjiztpL;egV0AFr0hcJ;fUeLws683gU;
-                  tYNTb7iXfB5;kCfFLyrsr63;baC8xbo39Ih;H9jkgrFTECK;FcWaUSDQyaK;dBZCfaRJHpl;
-                  wpBQqYCcUvl;BnLh5JaCvH9;yse3LYDict6;Z4B96JB9FPp;EPZB5449dks;mQrwwNQ61nF;
-                  mFD2sZFAABk;rpayStjaa1a;AggcL3yaPE6;CwKwrnJIo6r;zdR0UbSXAvP;gg20xBdjq7V;
-                  jHwvOp0wwkk;luxafh3nWng;sUwQqFDiuzq;dYKVOITB5ju;RrBIFT7aQDh;egyFeGZVxGf;
-                  A4emI2AABjd;OxiC4DAZNxh;YgCYwt8Jshb;LdiiIrW3GAg&filter=ou:{ou_uid}
-                  &filter=pe:2020Oct&displayProperty=SHORTNAME&skipData=false
-                  &includeMetadataDetails=false") %>% 
-    stringr::str_replace_all( "[\r\n]" , "") %>% 
-    URLencode(.) 
-  
-  
-  df_cols<-tibble::tribble(
-    ~id,~shortName,~col_name,
-    "ATX2xv8PsrX","PPG Attained","Attained",
-    "IzmZerN7tDN","PPG Scale-Up: Saturation", "Scale-Up: Saturation",
-    "AHMMjoPYta6","PPG Scale Up: Aggressive", "Scale-Up: Aggressive",
-    "b1X6pxMHgs6","PPG Sustained","Sustained",
-    "pibJV72pMyW","PPG Centrally Supported","Centrally Supported",
-    "CJYtvFbjeG2", "PPG No Prioritization","No Prioritization"
-  )
-  
-  df_rows<-tibble::tribble(
-    ~ind,~options,
-    "HTS_INDEX","<15",
-    "HTS_INDEX","15+",
-    "HTS_INDEX","Total",
-    "HTS_TST","<15",
-    "HTS_TST","15+",
-    "HTS_TST","Total",
-    "HTS_TST_POS","<15",
-    "HTS_TST_POS","15+",
-    "HTS_TST_POS","Total",
-    "TX_NEW","<15",
-    "TX_NEW","15+",
-    "TX_NEW","Total",
-    "TX_CURR","<15",
-    "TX_CURR","15+",
-    "TX_CURR","Total",
-    "TX_PVLS","<15",
-    "TX_PVLS","15+",
-    "TX_PVLS","Total",
-    "CXCA_SCRN","Total",
-    "OVC_SERV","<18",
-    "OVC_SERV","18+",
-    "OVC_SERV","18+",
-    "OVC_SERV","Total",
-    "OVC_HIVSTAT", "Total",
-    "PMTCT_STAT","<15",
-    "PMTCT_STAT","15+",
-    "PMTCT_STAT","Total",
-    "PMTCT_STAT_POS","<15",
-    "PMTCT_STAT_POS","15+",
-    "PMTCT_STAT_POS","Total",
-    "PMTCT_ART","<15",
-    "PMTCT_ART","15+",
-    "PMTCT_ART","Total",
-    "PMTCT_EID","Total",
-    "PP_PREV","<15",
-    "PP_PREV","15+",
-    "PP_PREV","Total",
-    "KP_PREV","Total",
-    "KP_MAT","Total",
-    "VMMC_CIRC","Total",
-    "HTS_SELF","<15",
-    "HTS_SELF","15+",
-    "HTS_SELF","Total",
-    "PrEP_NEW","Total",
-    "PrEP_CURR","Total",
-    "TB_STAT","<15",
-    "TB_STAT","15+",
-    "TB_STAT","Total",
-    "TB_ART","<15",
-    "TB_ART","15+",
-    "TB_ART","Total",
-    "TB_PREV","<15",
-    "TB_PREV","15+",
-    "TB_PREV","Total",
-    "TX_TB","<15",
-    "TX_TB","15+",
-    "TX_TB","Total",
-    "GEND_GBV","Total")
-  
-  df_base<-tidyr::crossing(df_rows,dplyr::select(df_cols,col_name)) %>% 
-    dplyr::arrange(ind,options,col_name) %>% 
-    dplyr::mutate(Value = 0) %>% 
-    dplyr::rename("Indicator" = ind,
-                  Age = options)
-  
-  df <- d2_analyticsResponse(url) 
-  
-  if (is.null(df)) {return(NULL)}
-  
-  df %<>% 
-    dplyr::mutate(Value = as.numeric(Value)) %>% 
-    dplyr::mutate(Data = stringr::str_replace_all(Data,"COP20 Targets ","")) %>% 
-    dplyr::mutate(Data = stringr::str_trim(Data)) %>% 
-    tidyr::separate("Data",into=c("Indicator","Numerator","Age"),sep=" ") %>% 
-    dplyr::mutate(Age = case_when(Age == "15-" ~ "<15",
-                                  Age == "15+" ~ "15+",
-                                  Age == "18-" ~"<18",
-                                  Age == "18+" ~ "18+",
-                                  TRUE ~ "Total")) %>% 
-    dplyr::mutate( Age = case_when( Indicator %in% c("CXCA_SCRN","OVC_HIVSTAT","KP_PREV","PMTCT_EID","KP_MAT","VMMC_CIRC","PrEP_NEW","PrEP_CURR","GEND_GBV")  ~ "Total",
-                                    TRUE ~ Age)) %>% 
-    dplyr::select(-Numerator) %>% 
-    dplyr::rename("col_name" = `Planning Prioritization Set` ) %>% 
-    dplyr::mutate(col_name = plyr::mapvalues(col_name,from=df_cols$shortName,to=df_cols$col_name))
-  
-  
-  df_totals<-df %>% 
-    group_by(Indicator,col_name) %>% 
-    dplyr::summarise(Value = sum(Value)) %>% 
-    dplyr::mutate(Age = "Total") %>% 
-    dplyr::ungroup() %>% 
-    dplyr::select(names(df))
-  
-  dplyr::bind_rows(df,df_totals,df_base) %>% 
-    dplyr::group_by(Indicator,Age,col_name) %>% 
-    dplyr::summarise(Value = sum(Value)) %>% 
-    dplyr::distinct() %>% 
-    dplyr::ungroup() %>% 
-    dplyr::mutate(col_name = factor(col_name,levels = df_cols$col_name)) %>% 
-    dplyr::mutate(Indicator = factor(Indicator,levels = unique(df_rows$ind))) %>% 
-    dplyr::arrange(Indicator,col_name) %>% 
-    tidyr::pivot_wider(names_from = col_name ,values_from = "Value") %>% 
-    dplyr::mutate("Total *" = rowSums(.[3:7]) )
-  
+analysis_getSitesTable<-function(ou_uid="cDGPF739ZZr") {
+
+  return(NULL)
+
 }
 
-memo_getPartnersTable<-function(ou_uid="cDGPF739ZZr") {
+analysis_getIndicatorsTable<-function(ou_uid="cDGPF739ZZr") {
   
   base_url<-config$baseurl
   
-  url<-glue::glue("{base_url}api/29/analytics.json?dimension=dx:pyD3q4hsocw;mpoYh9odYG5;
-DJF6GKEa9Jw;uzrCoPjSHAM;LejpyPTzSop;yoaC47zCSML;gVjB3hNi3r6;
-o8zSyUaIPRR;TadWkOKgCYt;dIhPb5PaNak;niYlMjiztpL;egV0AFr0hcJ;fUeLws683gU;
-tYNTb7iXfB5;kCfFLyrsr63;baC8xbo39Ih;H9jkgrFTECK;FcWaUSDQyaK;dBZCfaRJHpl;
-wpBQqYCcUvl;BnLh5JaCvH9;yse3LYDict6;Z4B96JB9FPp;EPZB5449dks;mQrwwNQ61nF;
-mFD2sZFAABk;rpayStjaa1a;AggcL3yaPE6;CwKwrnJIo6r;zdR0UbSXAvP;gg20xBdjq7V;jHwvOp0wwkk;
-luxafh3nWng;sUwQqFDiuzq;dYKVOITB5ju;RrBIFT7aQDh;egyFeGZVxGf;A4emI2AABjd;OxiC4DAZNxh;YgCYwt8Jshb;
-LdiiIrW3GAg&dimension=bw8KHXzxd9i:OO5qyDIwoMk;FPUgmtt8HRi;RGC9tURSc3W;cL6cHd6QJ5B;a7p2WOqhhzQ;PpCZbJvQyjL;r3bmih0XRCe;NLV6dy7BE2O
-&dimension=SH885jaRe0o&filter=ou:{ou_uid}&filter=pe:2020Oct&displayProperty=SHORTNAME&skipData=false&includeMetadataDetails=false") %>% 
+  url<-glue::glue("{base_url}api/29/analytics.json?dimension=SH885jaRe0o:mXjFJEexCHJ;t6dWOH7W5Ml&
+                dimension=ou:LEVEL-5;LEVEL-6;LEVEL-7;LEVEL-8;LEVEL-9;LEVEL-10;{ou_uid}&
+                dimension=dx:xNTzinnVgba;yEQ5FoXJWAx;aeCf1jJWE1x;sdarqD1J8fb;GxUQu72i38n;
+                Mon8vQgC9qg;l697bKzFRSv;J1E7eh1CyA0;LZbeWYZEkYL&
+                filter=pe:2018Oct&
+                displayProperty=SHORTNAME&
+                tableLayout=true&
+                columns=SH885jaRe0o&
+                rows=ou;dx& 
+                showHierarchy=true&
+                skipData=false&
+                includeMetadataDetails=false") %>% 
     stringr::str_replace_all( "[\r\n]" , "") %>% 
-    URLencode(.) 
+    URLencode(.)
   
-  df <- d2_analyticsResponse(url) 
+  print("Url generated")
+  
+  df <- d2_analyticsResponse(url)
+  
+  print("analytics response complete")
   
   if (is.null(df)) { return(NULL)}
   
-  df %>% 
-    dplyr::mutate(Value = as.numeric(Value)) %>% 
-    dplyr::mutate(Data = stringr::str_replace_all(Data,"COP20 Targets ","")) %>% 
-    dplyr::mutate(Data = stringr::str_trim(Data)) %>% 
-    tidyr::separate("Data",into=c("Indicator","Numerator","Age"),sep=" ") %>% 
-    dplyr::mutate(Age = case_when(Age == "15-" ~ "<15",
-                                  Age == "15+" ~ "15+",
-                                  Age == "18-" ~"<18",
-                                  Age == "18+" ~ "18+",
-                                  TRUE ~ "Total")) %>% 
-    dplyr::mutate( Age = case_when( Indicator %in% c("CXCA_SCRN","OVC_HIVSTAT","KP_PREV","PMTCT_EID","KP_MAT","VMMC_CIRC","PrEP_NEW","PrEP_CURR","GEND_GBV")  ~ "Total",
-                                    TRUE ~ Age)) %>% 
-    dplyr::select(-Numerator) %>% 
-    tidyr::pivot_wider(names_from = c("Indicator", "Age") ,values_from = "Value")
-  
-  
+  df %<>%
+    dplyr::select("namelevel3"=orgunitlevel3,
+                  "namelevel4"=orgunitlevel4,
+                  "namelevel5"=orgunitlevel5,
+                  "namelevel6"=orgunitlevel6,
+                  "namelevel7"=orgunitlevel7,
+                  "indicator"=dataname,
+                  "MOH"="00100 - PEPFAR-MOH align: MOH Data",
+                  "PEPFAR"="00200 - PEPFAR-MOH align: PEPFAR Data") %>%
+    tidyr::separate(indicator,c("indicator"),sep=" ",extra='drop') %>%
+    dplyr::mutate("MOH"=as.numeric(MOH)) %>%
+    dplyr::mutate("PEPFAR"=as.numeric(PEPFAR)) %>%
+    dplyr::mutate("Reported_on_by_both" = ifelse(is.na(MOH) | is.na(MOH),"one","both")) %>%
+    dplyr::mutate("Reported_by" = ifelse(!is.na(MOH),ifelse(!is.na(PEPFAR),"Both","MOH"),"PEPFAR")) %>%
+    dplyr::mutate("Difference" = ifelse(Reported_by == "Both",MOH - PEPFAR,NA)) %>%
+    dplyr::mutate("Reported_higher" = ifelse(!is.na(Difference),ifelse(Difference>0,"MOH",ifelse(Difference<0,"PEPFAR","Same result reported")),ifelse(is.na(MOH),"Only PEPFAR reported","Only MOH Reported"))) %>%
+    dplyr::mutate("Count_of_sites_reporting_both" = sum(ifelse(Reported_by=="Both",1,0))) %>%
+    dplyr::mutate("PEPFAR_sum_of_sites_reporting_both" = sum(ifelse(Reported_by=="Both",PEPFAR,0))) %>%
+    dplyr::mutate("Weighting" = ifelse(Reported_by=="Both",PEPFAR/PEPFAR_sum_of_sites_reporting_both,NA)) %>%
+    dplyr::mutate("Average" = rowMeans(cbind(MOH, PEPFAR),na.rm=F)) %>%
+    dplyr::mutate("Weighted_diff" = ifelse(Reported_by=="Both",Weighting*abs(Difference)/Average,NA)) %>%
+    dplyr::mutate("Site_hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,sep=" / ")) %>%
+    dplyr::select(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,indicator,
+                  MOH,PEPFAR,Reported_on_by_both,Reported_by,Reported_higher,
+                  Difference,Weighting,Weighted_diff,Count_of_sites_reporting_both,
+                  PEPFAR_sum_of_sites_reporting_both,Site_hierarchy)
+
 }
