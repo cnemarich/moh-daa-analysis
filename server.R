@@ -11,7 +11,7 @@ shinyServer(function(input, output, session) {
   
   ready <- reactiveValues(ok = FALSE)
   
-  fetchMemoData <- function() {
+  fetch <- function() {
     
     shinyjs::disable("downloadReport")
     if (!user_input$authenticated | !ready$ok)  {
@@ -43,9 +43,7 @@ shinyServer(function(input, output, session) {
     
   }
   
-  memo_data <- reactive({
-    fetchMemoData()
-  })
+  analysis_data <- reactive({ fetch() })
   
   user_input <- reactiveValues(authenticated = FALSE, 
                                status = "",
@@ -70,6 +68,7 @@ shinyServer(function(input, output, session) {
   output$prio_table <- DT::renderDataTable({
     
     d <- memo_data() %>% purrr::pluck("prio")
+    d <- analysis_data()
     
     if (!inherits(d, "error") & !is.null(d)) {
       
@@ -87,6 +86,7 @@ shinyServer(function(input, output, session) {
   output$partners_table <- DT::renderDataTable({
     
     d <- memo_data() %>% purrr::pluck("partners")
+    d <- analysis_data()
     
     if (!inherits(d, "error") & !is.null(d)) {
       
@@ -197,11 +197,11 @@ shinyServer(function(input, output, session) {
     },
     content = function(file) {
       
-      d <- memo_data()
       wb <- openxlsx::createWorkbook()
       openxlsx::addWorksheet(wb,"Prioritization")
       openxlsx::writeDataTable(wb = wb,
                                sheet = "Prioritization",x = d$prio)
+      d <- analysis_data() %>%
       
       
       openxlsx::addWorksheet(wb,"Partners_Agencies")
