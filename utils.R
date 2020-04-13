@@ -17,22 +17,18 @@ flog.appender(appender.file(config$log_path), name="cop_memo")
 
 getUserOperatingUnits<-function(uid) {
   
-  countryUID <- c('l1KFEXKI4Dg','Qh4XMQJhbk8','bQQJe0cC1eD','ds0ADyc9UCU',
+  country_uid <- c('l1KFEXKI4Dg','Qh4XMQJhbk8','bQQJe0cC1eD','ds0ADyc9UCU',
                    'ANN4YCOufcP','V0qMZH29CtN','IH1kchw86uA','JTypsdEUNPw',
                    'HfVjCurKxh2','qllxzIjjurr','lZsCb6y0KDX','h11OyvlPxpJ','FFVkaV9Zk1S',
                    'PqlFzhuPcF1','XtxUYCsDWrR','cDGPF739ZZr','WLG0z5NxQs8','mdXu6iCbn2G',
                    'FETQ6OmnsKB','ligZVIYs2rL','YM6xn5QxNpY','f5RoebaDLMx','a71G4Gtcttv')
-  
-  facilityLevel <- c(6,7,6,7,6,6,7,7,7,6,7,6,6,6,7,7,7,7,7,6,6,6,6)
-  
-  df <- data.frame(countryUID,facilityLevel)
   
   ous<-datapackr::configFile %>% 
     dplyr::select(countryName,countryUID) %>% 
     dplyr::filter(!stringr::str_detect(countryName,"_Military")) %>% 
     dplyr::distinct() %>% 
     dplyr::arrange(countryName) %>%
-    dplyr::inner_join(df)
+    dplyr::filter(countryUID %in% country_uid)
   
   if ( is.null(uid) ) {return("")} 
   
