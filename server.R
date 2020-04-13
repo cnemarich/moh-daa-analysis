@@ -15,6 +15,7 @@ shinyServer(function(input, output, session) {
     shinyjs::disable("ou")
     shinyjs::disable("fetch")
     ready$ok <- TRUE
+    d <- analysis_data()
   })
   
   observeEvent(input$reset_input, {
