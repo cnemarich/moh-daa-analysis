@@ -22,7 +22,8 @@ shinyServer(function(input, output, session) {
     shinyjs::enable("ou")
     shinyjs::enable("fetch")
     shinyjs::disable("downloadHTS")
-    shinyjs::disable("downloadPMTCT")
+    shinyjs::disable("downloadPMTCTART")
+    shinyjs::disable("downloadPMTCTSTAT")
     shinyjs::disable("downloadTBPREV")
     shinyjs::disable("downloadTXNEW")
     shinyjs::disable("downloadTXCURR")
@@ -34,7 +35,8 @@ shinyServer(function(input, output, session) {
   fetch <- function() {
     
     shinyjs::disable("downloadHTS")
-    shinyjs::disable("downloadPMTCT")
+    shinyjs::disable("downloadPMTCTART")
+    shinyjs::disable("downloadPMTCTSTAT")
     shinyjs::disable("downloadTBPREV")
     shinyjs::disable("downloadTXNEW")
     shinyjs::disable("downloadTXCURR")
@@ -57,7 +59,8 @@ shinyServer(function(input, output, session) {
       shinyjs::disable("ou")
       shinyjs::disable("fetch")
       shinyjs::enable("downloadHTS")
-      shinyjs::enable("downloadPMTCT")
+      shinyjs::enable("downloadPMTCTART")
+      shinyjs::enable("downloadPMTCTSTAT")
       shinyjs::enable("downloadTBPREV")
       shinyjs::enable("downloadTXNEW")
       shinyjs::enable("downloadTXCURR")
@@ -221,7 +224,8 @@ shinyServer(function(input, output, session) {
           tags$hr(),
           "Download Analysis Workbooks",
           disabled(downloadButton("downloadHTS", "HTS_TST analysis", style = "width:100%;text-align: left;"),
-          downloadButton("downloadPMTCT", "PMTCT analysis", style = "width:100%;text-align: left;"),
+          downloadButton("downloadPMTCTART", "PMTCT_ART analysis", style = "width:100%;text-align: left;"),
+          downloadButton("downloadPMTCTSTAT", "PMTCT_STAT analysis", style = "width:100%;text-align: left;"),
           downloadButton("downloadTBPREV", "TB_PREV analysis", style = "width:100%;text-align: left;"),
           downloadButton("downloadTXCURR", "TX_CURR analysis", style = "width:100%;text-align: left;"),
           downloadButton("downloadTXNEW", "TX_NEW analysis", style = "width:100%;text-align: left;"),
