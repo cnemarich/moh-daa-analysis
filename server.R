@@ -161,7 +161,9 @@ shinyServer(function(input, output, session) {
                       list(
                         className = 'dt-right', targets = 15),
                       list(
-                        className = 'dt-right', targets = 16)
+                        className = 'dt-right', targets = 16),
+                      list(
+                        className = 'dt-right', targets = 17)
                     )))
       
     } else
