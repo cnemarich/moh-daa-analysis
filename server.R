@@ -187,6 +187,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$ui <- renderUI({
+    
     if (user_input$authenticated == FALSE) {
       ##### UI code for login page
       fluidPage(fluidRow(
@@ -240,11 +241,11 @@ shinyServer(function(input, output, session) {
         mainPanel(tabsetPanel(
           id = "main-panel",
           type = "tabs",
-          tabPanel("Discordance Graph", plotOutput("discordance_graph")),
-          tabPanel("Site Alignment Analysis", dataTableOutput("site_table")),
-          tabPanel("Indicator Analysis", dataTableOutput("indicator_table")),
-          tabPanel("Pivot Table", rpivotTableOutput({"pivot"})),
-          tabPanel("Country Comparison", plotOutput("country_comparison"))
+          # tabPanel("Discordance Graph", plotOutput("discordance_graph")),
+          # tabPanel("Site Alignment Analysis", dataTableOutput("site_table")),
+          tabPanel("Indicator Analysis", dataTableOutput("indicator_table"))#,
+          # tabPanel("Pivot Table", rpivotTableOutput({"pivot"})),
+          # tabPanel("Country Comparison", plotOutput("country_comparison"))
         ))
       ))
     }
