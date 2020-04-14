@@ -250,36 +250,20 @@ shinyServer(function(input, output, session) {
   })
   
   output$downloadHTS <- downloadHandler(
-    filename = function() {
-      
-      
-      suffix <- "analysis_workbook_"
-      date<-format(Sys.time(),"%Y%m%d_%H%M%S")
-      paste0(paste(input$ou,indicator,prefix,date,sep="_"),".xlsx")
-      
-    },
+    filename = wb_filename(ou = input$ou, my_indicator = "HTS"),
     content = function(file) {
       
-      wb <- openxlsx::createWorkbook()
-      openxlsx::addWorksheet(wb,"Prioritization")
-      openxlsx::writeDataTable(wb = wb,
-                               sheet = "Prioritization",x = d$prio)
-      d <- analysis_data() %>%
-        purrr::pluck("indicators") %>%
-        dplyr::filter(indicator = "HTS_TST") %>%
-        dplyr::select(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,
-                      MOH,PEPFAR,Reported_on_by_both,Reported_by,Reported_higher,
-                      Difference,Weighting,Weighted_diff,Count_of_sites_reporting_both,
-                      PEPFAR_sum_of_sites_reporting_both,Site_hierarchy)
+      d <- analysis_data()
+      wb <- wb_filecontent(d,"HTS_TST",file)
+      return(wb)
+      
+    })
+      
+    content = function(file) {
       
       
-      openxlsx::addWorksheet(wb,"Partners_Agencies")
+      
       openxlsx::writeDataTable(wb = wb,
-                               sheet = "Partners_Agencies",x = d$partners)
       openxlsx::saveWorkbook(wb,file=file,overwrite = TRUE)
-    }
-  )
   
 })
-
-
