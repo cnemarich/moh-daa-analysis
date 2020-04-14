@@ -258,9 +258,56 @@ shinyServer(function(input, output, session) {
       return(wb)
       
     })
-      
+  
+  output$downloadPMTCTART <- downloadHandler(
+    filename = wb_filename(ou = input$ou, my_indicator = "PMTCT_ART"),
     content = function(file) {
       
+      d <- analysis_data()
+      wb <- wb_filecontent(d,"PMTCT_ART",file)
+      return(wb)
+      
+    })
+  
+  output$downloadPMTCTSTAT <- downloadHandler(
+    filename = wb_filename(ou = input$ou, my_indicator = "PMTCT_STAT"),
+    content = function(file) {
+      
+      d <- analysis_data()
+      wb <- wb_filecontent(d,"PMTCT_STAT",file)
+      return(wb)
+      
+    })
+  
+  output$downloadTBPREV <- downloadHandler(
+    filename = wb_filename(ou = input$ou, my_indicator = "TB"),
+    content = function(file) {
+      
+      d <- analysis_data()
+      wb <- wb_filecontent(d,"TB_PREV",file)
+      return(wb)
+      
+    })
+  
+  output$downloadTXCURR <- downloadHandler(
+    filename = wb_filename(ou = input$ou, my_indicator = "TX_CURR"),
+    content = function(file) {
+      
+      d <- analysis_data()
+      wb <- wb_filecontent(d,"TX_CURR",file)
+      return(wb)
+      
+    })
+  
+  output$downloadTXNEW <- downloadHandler(
+    filename = wb_filename(ou = input$ou, my_indicator = "TX_NEW"),
+    content = function(file) {
+      
+      d <- analysis_data()
+      wb <- wb_filecontent(d,"TX_NEW",file)
+      
+    })
+  
       
       
       openxlsx::writeDataTable(wb = wb,
