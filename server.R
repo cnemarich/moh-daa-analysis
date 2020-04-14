@@ -308,9 +308,24 @@ shinyServer(function(input, output, session) {
       
     })
   
+  output$downloadRaw <- downloadHandler(
+    filename = function() {
       
+      suffix <- "raw_data"
+      date<-format(Sys.time(),"%Y%m%d_%H%M%S")
+      name <- paste0(paste(input$ou,suffix,date,sep="_"),".xlsx")
       
+      },
+    content = function(file) {
+      
+      d <- analysis_data()
+      wb <- openxlsx::createWorkbook()
+      openxlsx::addWorksheet(wb,"RawData")
       openxlsx::writeDataTable(wb = wb,
+                               sheet = "RawData",x = d$indicators)
       openxlsx::saveWorkbook(wb,file=file,overwrite = TRUE)
+      return(wb)
+      
+    })
   
 })
