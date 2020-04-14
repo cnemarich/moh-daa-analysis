@@ -170,3 +170,32 @@ analysis_getIndicatorsTable<-function(ou_uid="cDGPF739ZZr") {
   }
   
 }
+
+
+wb_filename <- function(ou, my_indicator){
+  
+  suffix <- "analysis_workbook"
+  date<-format(Sys.time(),"%Y%m%d_%H%M%S")
+  name <- paste0(paste(ou,my_indicator,suffix,date,sep="_"),".xlsx")
+  return (name)
+  
+}
+
+wb_filecontent <- function(d, my_indicator,file){
+  
+  d %<>%
+    purrr::pluck("indicators") %>%
+    dplyr::filter(indicator == my_indicator) %>%
+    dplyr::select(-indicator)
+  
+  
+  wb <- openxlsx::loadWorkbook(file=file.path("templates","template.xlsx"))
+  openxlsx::writeData(wb = wb,
+                      sheet = "RawData",
+                      x = d,
+                      xy = c(1,2),
+                      colNames = F, rowNames = F, withFilter = FALSE)
+  openxlsx::saveWorkbook(wb,file=file,overwrite = TRUE)
+  return (wb)
+  
+  }
