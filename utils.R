@@ -134,7 +134,7 @@ analysis_getIndicatorsTable<-function(ou_uid="cDGPF739ZZr",period="2018Oct") {
                     "MOH"="00100 - PEPFAR-MOH align: MOH Data",
                     "PEPFAR"="00200 - PEPFAR-MOH align: PEPFAR Data") %>%
 #      dplyr::filter(!is.na(namelevel7) & (namelevel7 != "")) %>%
-      dplyr::mutate("Site_hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,sep=" / "))
+      dplyr::mutate("Site hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,sep=" / "))
     
   } else{
     
@@ -147,7 +147,7 @@ analysis_getIndicatorsTable<-function(ou_uid="cDGPF739ZZr",period="2018Oct") {
                     "MOH"="00100 - PEPFAR-MOH align: MOH Data",
                     "PEPFAR"="00200 - PEPFAR-MOH align: PEPFAR Data") %>%
 #      dplyr::filter(!is.na(namelevel6) & (namelevel6 != "")) %>% 
-      dplyr::mutate("Site_hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,sep=" / ")) %>%
+      dplyr::mutate("Site hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,sep=" / ")) %>%
       dplyr::mutate("namelevel7" = "") 
     
   }
@@ -156,17 +156,17 @@ analysis_getIndicatorsTable<-function(ou_uid="cDGPF739ZZr",period="2018Oct") {
     tidyr::separate(indicator,c("indicator"),sep=" ",extra='drop') %>%
     dplyr::mutate("MOH"=as.numeric(MOH)) %>%
     dplyr::mutate("PEPFAR"=as.numeric(PEPFAR)) %>%
-    dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,indicator,Site_hierarchy) %>%
+    dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,indicator,`Site hierarchy`) %>%
     dplyr::summarise(MOH = sum(MOH),PEPFAR = sum(PEPFAR)) %>%
     dplyr::ungroup() %>%
-    dplyr::mutate("Reported_on_by_both" = ifelse(is.na(MOH) | is.na(PEPFAR),"one","both")) %>%
-    dplyr::mutate("Reported_by" = ifelse(!is.na(MOH),ifelse(!is.na(PEPFAR),"Both","MOH"),"PEPFAR")) %>%
+    dplyr::mutate("Reported on by both" = ifelse(is.na(MOH) | is.na(PEPFAR),"one","both")) %>%
+    dplyr::mutate("Reported by" = ifelse(!is.na(MOH),ifelse(!is.na(PEPFAR),"Both","MOH"),"PEPFAR")) %>%
     dplyr::group_by(indicator) %>%
-    dplyr::mutate("Count_of_sites_reporting_both" = sum(ifelse(Reported_on_by_both=="both",1,0))) %>%
-    dplyr::mutate("PEPFAR_sum_of_sites_reporting_both" = sum(ifelse(Reported_on_by_both=="both",PEPFAR,0))) %>%
+    dplyr::mutate("Count of sites reporting both" = sum(ifelse(`Reported on by both`=="both",1,0))) %>%
+    dplyr::mutate("PEPFAR sum of sites reporting both" = sum(ifelse(`Reported on by both`=="both",PEPFAR,0))) %>%
     dplyr::ungroup() %>%
-    dplyr::mutate("Difference" = ifelse(Reported_by == "Both",MOH - PEPFAR,NA)) %>%
-    dplyr::mutate("Reported_higher" = case_when(
+    dplyr::mutate("Difference" = ifelse(`Reported by` == "Both",MOH - PEPFAR,NA)) %>%
+    dplyr::mutate("Reported higher" = case_when(
       is.na(MOH) ~ "Only PEPFAR reported",
       is.na(PEPFAR) ~ "Only MOH reported",
       Difference > 0 ~ "MOH",
@@ -174,13 +174,13 @@ analysis_getIndicatorsTable<-function(ou_uid="cDGPF739ZZr",period="2018Oct") {
       Difference == 0 ~ "Same result reported",
       TRUE ~ "Neither reported"
     )) %>%
-    dplyr::mutate("Weighting" = ifelse(Reported_by=="Both",PEPFAR/PEPFAR_sum_of_sites_reporting_both,NA)) %>%
+    dplyr::mutate("Weighting" = ifelse(`Reported by`=="Both",PEPFAR/`PEPFAR sum of sites reporting both`,NA)) %>%
     dplyr::mutate("Average" = rowMeans(cbind(MOH, PEPFAR),na.rm=F)) %>%
-    dplyr::mutate("Weighted_diff" = ifelse(Reported_by=="Both",Weighting*abs(Difference)/Average,NA)) %>%
+    dplyr::mutate("Weighted difference" = ifelse(`Reported by`=="Both",Weighting*abs(Difference)/Average,NA)) %>%
     dplyr::select(starts_with("namelevel"),indicator,
-                  MOH,PEPFAR,Reported_on_by_both,Reported_by,Reported_higher,
-                  Difference,Weighting,Weighted_diff,Count_of_sites_reporting_both,
-                  PEPFAR_sum_of_sites_reporting_both,Site_hierarchy)
+                  MOH,PEPFAR,`Reported on by both`,`Reported by`,`Reported higher`,
+                  Difference,Weighting,`Weighted difference`,`Count of sites reporting both`,
+                  `PEPFAR sum of sites reporting both`,`Site hierarchy`)
   
 }
 
@@ -224,7 +224,7 @@ analysis_getEMRTable<-function(ou_uid="cDGPF739ZZr",period="2018Oct") {
                     "namelevel7"=orgunitlevel7,
                     starts_with("EMR_SITE")) %>%
 #      dplyr::filter(!is.na(namelevel7) & (namelevel7 != "")) %>%
-      dplyr::mutate("Site_hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,sep=" / "))
+      dplyr::mutate("Site hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,sep=" / "))
     
   } else{
     
@@ -235,17 +235,26 @@ analysis_getEMRTable<-function(ou_uid="cDGPF739ZZr",period="2018Oct") {
                     "namelevel6"=orgunitlevel6,
                     starts_with("EMR_SITE")) %>%
 #       dplyr::filter(!is.na(namelevel6) & (namelevel6 != "")) %>%
-      dplyr::mutate("Site_hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,sep=" / ")) %>%
+      dplyr::mutate("Site hierarchy"= paste(namelevel3,namelevel4,namelevel5,namelevel6,sep=" / ")) %>%
       dplyr::mutate("namelevel7" = "")
     
   }
   
   df %<>%
-    dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,Site_hierarchy) %>%
-    dplyr::mutate("EMR - HIV Testing Services" = ifelse(sum(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - HIV Testing Services`) > 0, "yes","no")) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(starts_with("namelevel"),starts_with("EMR_SITE"),Site_hierarchy)
-  
+    dplyr::mutate("EMR - HIV Testing Services" = as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - HIV Testing Services`)) %>%
+    dplyr::mutate("EMR - Care and Treatment" = as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - Care and Treatment`)) %>%
+    dplyr::mutate("EMR - ANC and/or Maternity" = as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - ANC and/or Maternity`)) %>%
+    dplyr::mutate("EMR - EID" = as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - Early Infant Diagnosis (not Ped ART)`)) %>%
+    dplyr::mutate("EMR - HIV/TB" = as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - HIV/TB`)) %>%
+    dplyr::select(-starts_with("EMR_SITE")) %>%
+    dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,`Site hierarchy`) %>%
+    dplyr::summarise("Has EMR - HIV Testing Services" = ifelse(!is.na(sum(`EMR - HIV Testing Services`)),"yes","no"),
+                     "Has EMR - Care and Treatment" = ifelse(!is.na(sum(`EMR - Care and Treatment`)),"yes","no"),
+                     "Has EMR - ANC and/or Maternity" = ifelse(!is.na(sum(`EMR - ANC and/or Maternity`)),"yes","no"),
+                     "Has EMR - EID" = ifelse(!is.na(sum(`EMR - EID`)),"yes","no"),
+                     "Has EMR - HIV/TB" = ifelse(!is.na(sum(`EMR - HIV/TB`)),"yes","no")) %>%
+    dplyr::ungroup()
+
 }
 
 analysis_combineData <- function(indicators,emr){
@@ -254,7 +263,7 @@ analysis_combineData <- function(indicators,emr){
     select(-starts_with("namelevel"))
   
   df <- indicators %>%
-    dplyr::left_join(emr,by="Site_hierarchy")
+    dplyr::left_join(emr,by="Site hierarchy")
 
   }
 

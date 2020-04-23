@@ -10,7 +10,7 @@ moh_pivot <- function(d){
   
   rpivotTable(data = pivot,
               rows = c("indicator"),
-              vals = "Weighted_diff",
+              vals = "Weighted difference",
               aggregatorName = "Sum",
               rendererName = "Table",
               width="70%",

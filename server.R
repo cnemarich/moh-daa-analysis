@@ -231,17 +231,17 @@ shinyServer(function(input, output, session) {
   #     
   #     analysis_data() %>%
   #       purrr::pluck("analytics") %>%
-  #       dplyr::filter(Reported_on_by_both=="both") %>%
+  #       dplyr::filter(`Reported on by both`=="both") %>%
   #       dplyr::filter(indicator == site_filter$indicator_filter) %>%
-  #       dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,Site_hierarchy) %>%
+  #       dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,`Site hierarchy`) %>%
   #       dplyr::summarise(PEPFAR=sum(PEPFAR),
   #                        MOH=sum(MOH),
   #                        Difference=sum(Difference),
-  #                        Weighted_diff=sum(Weighted_diff)) %>%
+  #                        `Weighted difference`=sum(`Weighted difference`)) %>%
   #       dplyr::ungroup() %>%
   #       gt() %>%
   #       fmt_number(columns=vars(MOH,PEPFAR,Difference), decimals=0) %>%
-  #       fmt_percent(columns=vars(Weighted_diff), decimals=2)
+  #       fmt_percent(columns=vars(`Weighted difference`), decimals=2)
   #     
   #   } else {NULL},
   #   height = px(700),
@@ -257,13 +257,13 @@ shinyServer(function(input, output, session) {
       
       table_formatted <- d %>%
         purrr::pluck("analytics") %>%
-        dplyr::filter(Reported_on_by_both=="both") %>%
+        dplyr::filter(`Reported on by both`=="both") %>%
         dplyr::filter(indicator == site_filter$indicator_filter) %>%
-        dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,Site_hierarchy) %>%
+        dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,`Site hierarchy`) %>%
         dplyr::summarise(PEPFAR=sum(PEPFAR),
                          MOH=sum(MOH),
                          Difference=sum(Difference),
-                         Weighted_diff=sum(Weighted_diff)) %>%
+                         `Weighted difference`=sum(`Weighted difference`)) %>%
         dplyr::ungroup()
       
       DT::datatable(table_formatted,
@@ -293,17 +293,17 @@ shinyServer(function(input, output, session) {
       
       analysis_data() %>%
         purrr::pluck("analytics") %>%
-        dplyr::filter(Reported_on_by_both=="both") %>%
+        dplyr::filter(`Reported on by both`=="both") %>%
         dplyr::group_by(indicator) %>%
         dplyr::summarise(Sites=n(),
                          PEPFAR=sum(PEPFAR),
                          MOH=sum(MOH),
                          Difference=sum(Difference),
-                         Weighted_diff=sum(Weighted_diff)) %>%
+                         `Weighted difference`=sum(`Weighted difference`)) %>%
         dplyr::ungroup() %>%
         gt() %>%
         fmt_number(columns=vars(MOH,PEPFAR,Difference), decimals=0) %>%
-        fmt_percent(columns=vars(Weighted_diff), decimals=2)
+        fmt_percent(columns=vars(`Weighted difference`), decimals=2)
       
     } else {NULL},
     height = px(700),
