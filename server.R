@@ -4,14 +4,17 @@ require(datimvalidation)
 require(shinyWidgets)
 require(magrittr)
 require(ggplot2)
+require(gt)
 require(rpivotTable)
 source("./utils.R")
+source("./visuals.R")
 
 shinyServer(function(input, output, session) {
   
   ready <- reactiveValues(ok = FALSE)
   
   observeEvent(input$fetch, {
+    shinyjs::disable("pe")
     shinyjs::disable("ou")
     shinyjs::disable("fetch")
     ready$ok <- TRUE
@@ -19,6 +22,7 @@ shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$reset_input, {
+    shinyjs::enable("pe")
     shinyjs::enable("ou")
     shinyjs::enable("fetch")
     shinyjs::disable("downloadHTS")
@@ -31,6 +35,14 @@ shinyServer(function(input, output, session) {
     shinyjs::disable("reset_input")
     ready$ok <- FALSE
   })
+  
+  site_filter <- reactiveValues( indicator_filter=NULL )
+  
+  observeEvent(input$indicatorInput,{
+    
+    site_filter$indicator_filter <- input$indicatorInput
+  
+    })
   
   fetch <- function() {
     
@@ -47,35 +59,56 @@ shinyServer(function(input, output, session) {
       return(NULL)
     } else {
       
-      sendSweetAlert(
-        session,
-        title = "Fetching data",
-        text = "Sit tight. I'm getting your data",
-        btn_labels= NA
-      )
-      
-      #sites<-analysis_getSitesTable(input$ou)
-      indicators<-analysis_getIndicatorsTable(input$ou)
+      shinyjs::disable("pe")
       shinyjs::disable("ou")
       shinyjs::disable("fetch")
-      shinyjs::enable("downloadHTS")
-      shinyjs::enable("downloadPMTCTART")
-      shinyjs::enable("downloadPMTCTSTAT")
-      shinyjs::enable("downloadTBPREV")
-      shinyjs::enable("downloadTXNEW")
-      shinyjs::enable("downloadTXCURR")
-      shinyjs::enable("downloadRaw")
-      shinyjs::enable("reset_input")
-      closeSweetAlert(session)
-      my_data<-list(sites=sites,indicators=indicators)
-      if (is.null(my_data$sites) & is.null(my_data$indicators)) {
+      
+      withProgress(message = 'Fetching data', value = 0,{
+      
+      incProgress(0.25, detail = ("Fetching indicator data"))
+      indicators<-analysis_getIndicatorsTable(input$ou,input$pe)
+      Sys.sleep(0.5)
+
+      incProgress(0.25, detail = ("Fetching EMR data"))
+      emr<-analysis_getEMRTable(input$ou,input$pe)
+      Sys.sleep(0.5)
+      
+      incProgress(0.25, detail = ("Merging datasets"))
+      analytics<-analysis_combineData(indicators,emr)
+      Sys.sleep(0.5)
+      
+      incProgress(0.25, detail = ("Generating final dataset"))
+      my_data<-list(indicators=indicators,emr=emr,analytics=analytics)
+      Sys.sleep(0.5)
+      
+      })
+      
+      if (is.null(my_data$emr) & is.null(my_data$indicators)) {
         sendSweetAlert(
           session,
           title = "Oops!",
           text = "Sorry, I could not find any data for you!"
         )
+      
+        shinyjs::enable("reset_input")
+        
+        ready$ok <- FALSE
+        
+        return(NULL)
+        
+      } else {
+      
+        shinyjs::enable("downloadHTS")
+        shinyjs::enable("downloadPMTCTART")
+        shinyjs::enable("downloadPMTCTSTAT")
+        shinyjs::enable("downloadTBPREV")
+        shinyjs::enable("downloadTXNEW")
+        shinyjs::enable("downloadTXCURR")
+        shinyjs::enable("downloadRaw")
+        shinyjs::enable("reset_input")
+        
+        return(my_data)
       }
-      return(my_data)
     }
     
   }
@@ -99,76 +132,6 @@ shinyServer(function(input, output, session) {
         text = "Please check your username/password!",
         type = "error")
       flog.info(paste0("User ", input$user_name, " login failed."), name = "datapack")
-    }
-  })
-  
-  output$site_table <- DT::renderDataTable({
-    
-    d <- analysis_data()
-    
-    if (!inherits(d, "error") & !is.null(d)) {
-      
-      table_formatted <- d %>%
-        purrr::pluck("sites")
-      
-      DT::datatable(table_formatted,options = list(pageLength = 50, 
-                                     columnDefs = list(list(className = 'dt-right', 
-                                                            targets = 3:8)))) %>% 
-        formatCurrency(3:8, '',digits =0)
-      
-    } else
-    {
-      NULL
-    }
-  })
-  
-  output$indicator_table <- DT::renderDataTable({
-    
-    d <- analysis_data()
-    
-    if (!inherits(d, "error") & !is.null(d)) {
-      
-      table_formatted <- d %>% 
-        purrr::pluck("indicators")
-      
-      DT::datatable(table_formatted,
-                    options = list(pageLength = 50, columnDefs = list(list(
-                      className = 'dt-right', targets = 2),
-                      list(
-                        className = 'dt-right', targets = 3),
-                      list(
-                        className = 'dt-right', targets = 4),
-                      list(
-                        className = 'dt-right', targets = 5),
-                      list(
-                        className = 'dt-right', targets = 6),
-                      list(
-                        className = 'dt-right', targets = 7),
-                      list(
-                        className = 'dt-right', targets = 8),
-                      list(
-                        className = 'dt-right', targets = 9),
-                      list(
-                        className = 'dt-right', targets = 10),
-                      list(
-                        className = 'dt-right', targets = 11),
-                      list(
-                        className = 'dt-right', targets = 12),
-                      list(
-                        className = 'dt-right', targets = 13),
-                      list(
-                        className = 'dt-right', targets = 14),
-                      list(
-                        className = 'dt-right', targets = 15),
-                      list(
-                        className = 'dt-right', targets = 16),
-                      list(
-                        className = 'dt-right', targets = 17)
-                    )))
-      
-    } else
-    {
-      NULL
     }
   })
   
@@ -203,7 +166,7 @@ shinyServer(function(input, output, session) {
         )
       ))
     } else {
-      wiki_url <- a("MoH Data Alignment Support Site",
+      wiki_url <- a("Data Alignment Support Site",
                     href = "https://datim.zendesk.com/hc/en-us/categories/360000927432-PEPFAR-MoH-Data-Alignment-Activity",
                     target = "_blank")
       
@@ -222,6 +185,7 @@ shinyServer(function(input, output, session) {
           id = "side-panel",
           tagList(wiki_url),
           tags$hr(),
+          selectInput("pe", "Period",c("FY2019"="2018Oct","FY2018"="2017Oct")),
           selectInput("ou", "Operating Unit",getUserOperatingUnits(user_input$user_orgunit)),
           actionButton("fetch","Get Data"),
           tags$hr(),
@@ -242,14 +206,121 @@ shinyServer(function(input, output, session) {
           id = "main-panel",
           type = "tabs",
           # tabPanel("Discordance Graph", plotOutput("discordance_graph")),
-          # tabPanel("Site Alignment Analysis", dataTableOutput("site_table")),
-          tabPanel("Indicator Analysis", dataTableOutput("indicator_table"))#,
-          # tabPanel("Pivot Table", rpivotTableOutput({"pivot"})),
+          # tabPanel("Site Alignment Analysis",
+          #          pickerInput("indicatorInput","Indicator",
+          #                      choices = c("HTS_TST","PMTCT_STAT","PMTCT_ART","TB_PREV","TX_CURR","TX_NEW"),
+          #                      options = list(`actions-box` = TRUE),multiple = F),
+          #          gt_output("site_table")),
+          tabPanel("Site Alignment Analysis",
+                   pickerInput("indicatorInput","Indicator",
+                               choices = c("HTS_TST","PMTCT_STAT","PMTCT_ART","TB_PREV","TX_CURR","TX_NEW"),
+                               options = list(`actions-box` = TRUE),multiple = F),
+                   dataTableOutput("site_table")),
+          tabPanel("Indicator Analysis", gt_output("indicator_table")),
+          tabPanel("Pivot Table", rpivotTableOutput({"pivot"}))#,
           # tabPanel("Country Comparison", plotOutput("country_comparison"))
         ))
       ))
     }
     
+  })
+  
+  # output$site_table <- render_gt(
+  #   
+  #   expr = if(ready$ok){
+  #     
+  #     analysis_data() %>%
+  #       purrr::pluck("analytics") %>%
+  #       dplyr::filter(Reported_on_by_both=="both") %>%
+  #       dplyr::filter(indicator == site_filter$indicator_filter) %>%
+  #       dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,Site_hierarchy) %>%
+  #       dplyr::summarise(PEPFAR=sum(PEPFAR),
+  #                        MOH=sum(MOH),
+  #                        Difference=sum(Difference),
+  #                        Weighted_diff=sum(Weighted_diff)) %>%
+  #       dplyr::ungroup() %>%
+  #       gt() %>%
+  #       fmt_number(columns=vars(MOH,PEPFAR,Difference), decimals=0) %>%
+  #       fmt_percent(columns=vars(Weighted_diff), decimals=2)
+  #     
+  #   } else {NULL},
+  #   height = px(700),
+  #   width = "70%"
+  #   
+  # )
+  
+  output$site_table <- DT::renderDataTable({
+    
+    d <- analysis_data()
+    
+    if (!inherits(d, "error") & !is.null(d)) {
+      
+      table_formatted <- d %>%
+        purrr::pluck("analytics") %>%
+        dplyr::filter(Reported_on_by_both=="both") %>%
+        dplyr::filter(indicator == site_filter$indicator_filter) %>%
+        dplyr::group_by(namelevel3,namelevel4,namelevel5,namelevel6,namelevel7,Site_hierarchy) %>%
+        dplyr::summarise(PEPFAR=sum(PEPFAR),
+                         MOH=sum(MOH),
+                         Difference=sum(Difference),
+                         Weighted_diff=sum(Weighted_diff)) %>%
+        dplyr::ungroup()
+      
+      DT::datatable(table_formatted,
+                    options = list(pageLength = 50, columnDefs = list(
+                      list(className = 'dt-right', targets = 2),
+                      list(className = 'dt-right', targets = 3),
+                      list(className = 'dt-right', targets = 4),
+                      list(className = 'dt-right', targets = 5),
+                      list(className = 'dt-right', targets = 6),
+                      list(className = 'dt-right', targets = 7),
+                      list(className = 'dt-right', targets = 8),
+                      list(className = 'dt-right', targets = 9),
+                      list(className = 'dt-right', targets = 10),
+                      list(className = 'dt-right', targets = 11)
+                      )))
+      
+    } else
+    {
+      NULL
+    }
+  })
+  
+  
+  output$indicator_table <- render_gt(
+    
+    expr = if(ready$ok){
+      
+      analysis_data() %>%
+        purrr::pluck("analytics") %>%
+        dplyr::filter(Reported_on_by_both=="both") %>%
+        dplyr::group_by(indicator) %>%
+        dplyr::summarise(Sites=n(),
+                         PEPFAR=sum(PEPFAR),
+                         MOH=sum(MOH),
+                         Difference=sum(Difference),
+                         Weighted_diff=sum(Weighted_diff)) %>%
+        dplyr::ungroup() %>%
+        gt() %>%
+        fmt_number(columns=vars(MOH,PEPFAR,Difference), decimals=0) %>%
+        fmt_percent(columns=vars(Weighted_diff), decimals=2)
+      
+    } else {NULL},
+    height = px(700),
+    width = "70%"
+    
+  )
+  
+  output$pivot <- renderRpivotTable({
+    
+    d <- analysis_data()
+    
+    if ( !is.null(d) ) {
+      
+      if ( is.null(d$analytics) ) {return(NULL)}
+      moh_pivot(d)
+      
+    } else { NULL }
   })
   
   output$downloadHTS <- downloadHandler(
@@ -324,9 +395,8 @@ shinyServer(function(input, output, session) {
       d <- analysis_data()
       wb <- openxlsx::createWorkbook()
       openxlsx::addWorksheet(wb,"RawData")
-      openxlsx::writeDataTable(wb = wb,
-                               sheet = "RawData",x = d$indicators)
-      openxlsx::saveWorkbook(wb,file=file,overwrite = TRUE)
+      openxlsx::writeDataTable(wb=wb,sheet="RawData",x=d$analytics)
+      openxlsx::saveWorkbook(wb,file=file,overwrite=TRUE)
       return(wb)
       
     })
