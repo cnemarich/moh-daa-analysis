@@ -194,7 +194,7 @@ shinyServer(function(input, output, session) {
           selectInput("pe", "Period",
                       c("FY2019" = "2018Oct", "FY2018" = "2017Oct")),
           selectInput("ou", "Operating Unit",
-                      getUserOperatingUnits(user_input$user_orgunit)),
+                      get_user_operating_units(user_input$user_orgunit)),
           actionButton("fetch", "Get Data"),
           tags$hr(),
           "Download Analysis Workbooks",
@@ -232,7 +232,7 @@ shinyServer(function(input, output, session) {
           tabPanel("Pivot Table", rpivotTableOutput({
             "pivot"
             }))
-          # tabPanel("Country Comparison", plotOutput("country_comparison"))
+          tabPanel("Country Comparison", plotOutput("country_comparison"))
         ))
       ))
     }

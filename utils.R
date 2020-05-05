@@ -10,12 +10,11 @@ require(stringr)
 require(DT)
 require(datapackr)
 
-
 config <- config::get()
 options("baseurl" = config$baseurl)
 flog.appender(appender.file(config$log_path), name = "cop_memo")
 
-getUserOperatingUnits <- function(uid) {
+get_user_operating_units <- function(uid) {
 
   country_uid <- c("l1KFEXKI4Dg", "Qh4XMQJhbk8", "bQQJe0cC1eD", "ds0ADyc9UCU",
                    "ANN4YCOufcP", "V0qMZH29CtN", "IH1kchw86uA", "JTypsdEUNPw",
