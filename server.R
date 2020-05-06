@@ -37,13 +37,20 @@ shinyServer(function(input, output, session) {
     ready$ok <- FALSE
   })
 
-  site_filter <- reactiveValues(indicator_filter = NULL)
+  site_filter <- reactiveValues(indicator_filter = NULL,
+                                period_filter = NULL)
 
   observeEvent(input$indicatorInput, {
 
     site_filter$indicator_filter <- input$indicatorInput
 
     })
+  
+  observeEvent(input$periodInput, {
+    
+    site_filter$period_filter <- input$periodInput
+    
+  })
 
   fetch <- function() {
 
@@ -69,15 +76,15 @@ shinyServer(function(input, output, session) {
       withProgress(message = "Fetching data", value = 0, {
 
       incProgress(0.25, detail = ("Fetching indicator data"))
-      indicators <- analysis_getindicatorstable(input$ou, input$pe)
+      indicators <- get_indicators_table(input$ou)
       Sys.sleep(0.5)
 
       incProgress(0.25, detail = ("Fetching EMR data"))
-      emr <- analysis_getemrtable(input$ou, input$pe)
+      emr <- get_emr_table(input$ou)
       Sys.sleep(0.5)
 
       incProgress(0.25, detail = ("Merging datasets"))
-      analytics <- analysis_combinedata(indicators, emr)
+      analytics <- combine_data(indicators, emr)
       Sys.sleep(0.5)
 
       incProgress(0.25, detail = ("Generating final dataset"))
@@ -148,7 +155,8 @@ shinyServer(function(input, output, session) {
   output$ui_datim_login <- renderUI({
     wellPanel(fluidRow(
       img(src = "pepfar.png", align = "center"),
-      h3("Welcome to the PEPFAR-MoH Data Alignment Activity Analysis app.", align = "center"),
+      h3("Welcome to the PEPFAR-MoH Data Alignment Activity Analysis app.",
+         align = "center"),
       h4("Please login with your DATIM credentials:", align = "center")
     ),
     fluidRow(
@@ -242,8 +250,6 @@ shinyServer(function(input, output, session) {
           id = "side-panel",
           tagList(wiki_url),
           tags$hr(),
-          selectInput("pe", "Period",
-                      c("FY2019" = "2018Oct", "FY2018" = "2017Oct")),
           selectInput("ou", "Operating Unit",
                       get_user_operating_units(user_input$datim_user_orgunit)),
           actionButton("fetch", "Get Data"),
@@ -278,6 +284,10 @@ shinyServer(function(input, output, session) {
                                            "TB_PREV", "TX_CURR", "TX_NEW"),
                                options = list(`actions-box` = TRUE),
                                multiple = F),
+                   pickerInput("periodInput", "Period",
+                               choices = c("FY2019", "FY2018"),
+                               options = list(`actions-box` = TRUE),
+                               multiple = T),
                    dataTableOutput("site_table")),
           tabPanel("Indicator Analysis", gt_output("indicator_table")),
           tabPanel("Pivot Table", rpivotTableOutput({
@@ -298,29 +308,19 @@ shinyServer(function(input, output, session) {
       table_formatted <- d %>%
         purrr::pluck("analytics") %>%
         dplyr::filter(`Reported on by both` == "both") %>%
-        dplyr::filter(indicator == site_filter$indicator_filter) %>%
+        dplyr::filter(indicator == site_filter$indicator_filter,
+                      period == site_filter$period_filter) %>%
         dplyr::group_by(namelevel3, namelevel4, namelevel5,
-                        namelevel6, namelevel7, `Site hierarchy`) %>%
+                        namelevel6, namelevel7, period, `Site hierarchy`) %>%
         dplyr::summarise(PEPFAR = sum(PEPFAR),
                          MOH = sum(MOH),
                          Difference = sum(Difference),
                          `Weighted difference` = sum(`Weighted difference`)) %>%
         dplyr::ungroup()
 
-      DT::datatable(table_formatted,
-                    options = list(pageLength = 50, columnDefs = list(
-                      list(className = "dt-right", targets = 2),
-                      list(className = "dt-right", targets = 3),
-                      list(className = "dt-right", targets = 4),
-                      list(className = "dt-right", targets = 5),
-                      list(className = "dt-right", targets = 6),
-                      list(className = "dt-right", targets = 7),
-                      list(className = "dt-right", targets = 8),
-                      list(className = "dt-right", targets = 9),
-                      list(className = "dt-right", targets = 10),
-                      list(className = "dt-right", targets = 11)
-                      )))
-
+      DT::datatable(table_formatted, options = list(pageLength = 50)) %>%
+        DT::formatPercentage("Weighted difference")
+        
     } else {
       NULL
     }
