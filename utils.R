@@ -14,32 +14,6 @@ config <- config::get()
 options("baseurl" = config$baseurl)
 flog.appender(appender.file(config$log_path), name = "cop_memo")
 
-get_user_operating_units <- function(uid) {
-
-  country_uid <- c("l1KFEXKI4Dg", "Qh4XMQJhbk8", "bQQJe0cC1eD", "ds0ADyc9UCU",
-                   "ANN4YCOufcP", "V0qMZH29CtN", "IH1kchw86uA", "JTypsdEUNPw",
-                   "HfVjCurKxh2", "qllxzIjjurr", "lZsCb6y0KDX", "h11OyvlPxpJ",
-                   "FFVkaV9Zk1S", "PqlFzhuPcF1", "XtxUYCsDWrR", "cDGPF739ZZr",
-                   "WLG0z5NxQs8", "mdXu6iCbn2G", "FETQ6OmnsKB", "ligZVIYs2rL",
-                   "YM6xn5QxNpY", "f5RoebaDLMx", "a71G4Gtcttv")
-
-  ous <- datapackr::configFile %>%
-    dplyr::select(countryName, countryUID) %>%
-    dplyr::filter(!stringr::str_detect(countryName, "_Military")) %>%
-    dplyr::distinct() %>%
-    dplyr::arrange(countryName) %>%
-    dplyr::filter(countryUID %in% country_uid)
-
-  if (is.null(uid)) {
-    return("")
-    }
-
-  if (uid != "ybg3MO3hcf4") {
-    ous %<>%
-      dplyr::filter(model_uid == uid)
-  }
-  setNames(ous$countryUID, ous$countryName)
-}
 
 dhis_login <- function(baseurl, username, password) {
   httr::set_config(httr::config(http_version = 0))
@@ -73,6 +47,34 @@ geoalign_login <- function(geourl, username, password) {
   }
 }
 
+get_user_operating_units <- function(uid) {
+  
+  country_uid <- c("l1KFEXKI4Dg", "Qh4XMQJhbk8", "bQQJe0cC1eD", "ds0ADyc9UCU",
+                   "ANN4YCOufcP", "V0qMZH29CtN", "IH1kchw86uA", "JTypsdEUNPw",
+                   "HfVjCurKxh2", "qllxzIjjurr", "lZsCb6y0KDX", "h11OyvlPxpJ",
+                   "FFVkaV9Zk1S", "PqlFzhuPcF1", "XtxUYCsDWrR", "cDGPF739ZZr",
+                   "WLG0z5NxQs8", "mdXu6iCbn2G", "FETQ6OmnsKB", "ligZVIYs2rL",
+                   "YM6xn5QxNpY", "f5RoebaDLMx", "a71G4Gtcttv")
+  
+  ous <- datapackr::configFile %>%
+    dplyr::select(countryName, countryUID) %>%
+    dplyr::filter(!stringr::str_detect(countryName, "_Military")) %>%
+    dplyr::distinct() %>%
+    dplyr::arrange(countryName) %>%
+    dplyr::filter(countryUID %in% country_uid)
+  
+  if (is.null(uid)) {
+    return("")
+  }
+  
+  # If user does not have global access, only return their assigned country.
+  if (uid != "ybg3MO3hcf4") {
+    ous %<>%
+      dplyr::filter(model_uid == uid)
+  }
+  setNames(ous$countryUID, ous$countryName)
+}
+
 d2_analyticsresponse <- function(url, remap_cols = TRUE) {
   d <- jsonlite::fromJSON(content(GET(url), "text"))
   if (NROW(d$rows) > 0) {
@@ -95,15 +97,26 @@ d2_analyticsresponse <- function(url, remap_cols = TRUE) {
     }
 }
 
-analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
-                                      period = "2018Oct") {
-
-  #Countries with facility level at organization unit level 7
+get_ou_facility_level <- function(ou_uid) {
+  
+  # List of all countries by UID where the facilities are at level 7
   level_sevens <- c("Qh4XMQJhbk8", "ds0ADyc9UCU", "IH1kchw86uA", "JTypsdEUNPw",
                     "HfVjCurKxh2", "lZsCb6y0KDX", "XtxUYCsDWrR", "cDGPF739ZZr",
                     "WLG0z5NxQs8", "mdXu6iCbn2G", "FETQ6OmnsKB")
+  
+  # Returns the level at which facilities are listed for the country
+  if (ou_uid %in% level_sevens){
+    return(7)
+  } else {
+    return(6)
+  }
+  
+}
 
-  ou_lvl <- ifelse(ou_uid %in% level_sevens, 7, 6)
+get_indicators_table <- function(ou_uid = "cDGPF739ZZr") {
+
+  # Assembles URL for API call based on the facility level of the OU
+  ou_lvl <- get_ou_facility_level(ou_uid)
 
   base_url <- config$baseurl
 
@@ -115,23 +128,26 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
                 LEVEL-8;LEVEL-9;{lvl_url}{ou_uid}&
                 dimension=dx:xNTzinnVgba;yEQ5FoXJWAx;aeCf1jJWE1x;sdarqD1J8fb;
                 GxUQu72i38n;Mon8vQgC9qg;l697bKzFRSv;J1E7eh1CyA0;LZbeWYZEkYL&
-                filter=pe:{period}&
+                dimension=pe:2017Oct;2018Oct&
                 displayProperty=SHORTNAME&
                 tableLayout=true&
                 columns=SH885jaRe0o&
-                rows=ou;dx&
+                rows=ou;dx;pe&
                 showHierarchy=true&
                 skipData=false&
                 includeMetadataDetails=false") %>%
     stringr::str_replace_all("[\r\n]", "") %>%
     URLencode(.)
 
+  # Fetches data from the server
   df <- d2_analyticsresponse(url)
 
+  # Returns null if API returns nothing
   if (is.null(df)) {
     return(NULL)
     }
 
+  # Renames organization unit level columns and adds Site Hierachy column
   if (ou_lvl == 7) {
 
      df %<>%
@@ -141,6 +157,7 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
                     "namelevel6" = orgunitlevel6,
                     "namelevel7" = orgunitlevel7,
                     "indicator" = dataname,
+                    "period" = periodname,
                     "MOH" = "00100 - PEPFAR-MOH align: MOH Data",
                     "PEPFAR" = "00200 - PEPFAR-MOH align: PEPFAR Data") %>%
       dplyr::filter(!is.na(namelevel7) & (namelevel7 != "")) %>%
@@ -156,6 +173,7 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
                     "namelevel5" = orgunitlevel5,
                     "namelevel6" = orgunitlevel6,
                     "indicator" = dataname,
+                    "period" = periodname,
                     "MOH" = "00100 - PEPFAR-MOH align: MOH Data",
                     "PEPFAR" = "00200 - PEPFAR-MOH align: PEPFAR Data") %>%
       dplyr::filter(!is.na(namelevel6) & (namelevel6 != "")) %>%
@@ -165,16 +183,24 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
 
   }
 
+  # Cleans up indicator, MOH, and PEPFAR columns
   df %<>%
     tidyr::separate(indicator, c("indicator"), sep = " ", extra = "drop") %>%
+    dplyr::mutate(period = case_when(
+      period == "Oct 2018 to Sep 2019" ~ "FY2019",
+      period == "Oct 2017 to Sep 2018" ~ "FY2018",
+      TRUE ~ "ERROR"
+    )) %>%
     dplyr::mutate("MOH" = as.numeric(MOH)) %>%
     dplyr::mutate("PEPFAR" = as.numeric(PEPFAR)) %>%
     dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6, namelevel7,
-                    indicator, `Site hierarchy`) %>%
+                    indicator, period, `Site hierarchy`) %>%
     dplyr::summarise(MOH = sum(MOH, na.rm = any(!is.na(MOH))),
                      PEPFAR = max(PEPFAR, na.rm = any(!is.na(PEPFAR)))) %>%
-    dplyr::ungroup() %>%
-    dplyr::group_by(indicator) %>%
+    dplyr::ungroup() 
+  
+  # Creates basic summary columns about reporting institutions and figures
+  df %<>%
     dplyr::mutate("Reported on by both" =
                     ifelse(is.na(MOH) | is.na(PEPFAR),
                            ifelse(is.na(MOH) & is.na(PEPFAR), "neither", "one"),
@@ -183,11 +209,6 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
                     ifelse(!is.na(MOH),
                            ifelse(!is.na(PEPFAR), "Both", "MOH"),
                            ifelse(!is.na(PEPFAR), "Neither", "PEPFAR"))) %>%
-    dplyr::mutate("Count of sites reporting both" =
-                    sum(ifelse(`Reported on by both` == "both", 1, 0))) %>%
-    dplyr::mutate("PEPFAR sum of sites reporting both" =
-                    sum(ifelse(`Reported on by both` == "both", PEPFAR, 0))) %>%
-    dplyr::ungroup() %>%
     dplyr::mutate("Difference" =
                     ifelse(`Reported by` == "Both", MOH - PEPFAR, NA)) %>%
     dplyr::mutate("Reported higher" = case_when(
@@ -197,7 +218,19 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
       Difference < 0 ~ "PEPFAR reported higher",
       Difference == 0 ~ "Same result reported",
       TRUE ~ "Neither reported"
-    )) %>%
+    ))
+    
+  # Groups rows by indicator and calculates indicator-specific summaries
+  df %<>%  
+    dplyr::group_by(indicator, period) %>%
+    dplyr::mutate("Count of sites reporting both" =
+                    sum(ifelse(`Reported on by both` == "both", 1, 0))) %>%
+    dplyr::mutate("PEPFAR sum of sites reporting both" =
+                    sum(ifelse(`Reported on by both` == "both", PEPFAR, 0))) %>%
+    dplyr::ungroup()
+
+  # Calculates weighting variables
+  df %<>%
     dplyr::mutate("Weighting" =
                     ifelse(`Reported by` == "Both",
                            PEPFAR / `PEPFAR sum of sites reporting both`,
@@ -205,8 +238,11 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
     dplyr::mutate("Average" = rowMeans(cbind(MOH, PEPFAR), na.rm = F)) %>%
     dplyr::mutate("Weighted difference" =
                     ifelse(`Reported by` == "Both",
-                           Weighting * abs(Difference) / Average, NA)) %>%
-    dplyr::select(starts_with("namelevel"), indicator, MOH, PEPFAR,
+                           Weighting * abs(Difference) / Average, NA)) 
+  
+  # Reorganizes table for export
+  df %<>%
+    dplyr::select(starts_with("namelevel"), indicator, period, MOH, PEPFAR,
                   `Reported on by both`, `Reported by`, `Reported higher`,
                   Difference, Weighting, `Weighted difference`,
                   `Count of sites reporting both`,
@@ -214,14 +250,10 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
 
 }
 
-analysis_getemrtable <- function(ou_uid = "cDGPF739ZZr", period = "2018Oct") {
+get_emr_table <- function(ou_uid = "cDGPF739ZZr") {
 
-  #Countries with facility level at organization unit level 7
-  level_sevens <- c("Qh4XMQJhbk8", "ds0ADyc9UCU", "IH1kchw86uA", "JTypsdEUNPw",
-                    "HfVjCurKxh2", "lZsCb6y0KDX", "XtxUYCsDWrR", "cDGPF739ZZr",
-                    "WLG0z5NxQs8", "mdXu6iCbn2G", "FETQ6OmnsKB")
-
-  ou_lvl <- ifelse(ou_uid %in% level_sevens, 7, 6)
+  # Assembles URL for API call based on the facility level of the OU
+  ou_lvl <- get_ou_facility_level(ou_uid)
 
   base_url <- config$baseurl
 
@@ -231,23 +263,25 @@ analysis_getemrtable <- function(ou_uid = "cDGPF739ZZr", period = "2018Oct") {
                 dimension=dx:mFvVvrRvZgo&dimension=co&
                 dimension=ou:LEVEL-5;LEVEL-6;LEVEL-7;
                 LEVEL-8;LEVEL-9;{lvl_url}{ou_uid}&
-                filter=pe:{period}&
+                dimension=pe:2017Oct;2018Oct&
                 displayProperty=SHORTNAME&
                 tableLayout=true&
                 columns=dx;co&
-                rows=ou&
+                rows=ou;pe&
                 showHierarchy=true&
                 skipData=false&
                 includeMetadataDetails=false") %>%
     stringr::str_replace_all("[\r\n]", "") %>%
     URLencode(.)
 
+  # Fetches data from the server
   df <- d2_analyticsresponse(url_emr)
 
   if (is.null(df)) {
     return(NULL)
     }
 
+  # Renames organization unit level columns and adds Site Hierachy column
   if (ou_lvl == 7) {
 
     df %<>%
@@ -256,6 +290,7 @@ analysis_getemrtable <- function(ou_uid = "cDGPF739ZZr", period = "2018Oct") {
                     "namelevel5" = orgunitlevel5,
                     "namelevel6" = orgunitlevel6,
                     "namelevel7" = orgunitlevel7,
+                    "period" = periodname,
                     starts_with("EMR_SITE")) %>%
       dplyr::mutate("Site hierarchy" = paste(namelevel3, namelevel4,
                                              namelevel5, namelevel6,
@@ -268,6 +303,7 @@ analysis_getemrtable <- function(ou_uid = "cDGPF739ZZr", period = "2018Oct") {
                     "namelevel4" = orgunitlevel4,
                     "namelevel5" = orgunitlevel5,
                     "namelevel6" = orgunitlevel6,
+                    "period" = periodname,
                     starts_with("EMR_SITE")) %>%
       dplyr::mutate("Site hierarchy" = paste(namelevel3, namelevel4, namelevel5,
                                             namelevel6, sep = " / ")) %>%
@@ -275,7 +311,13 @@ analysis_getemrtable <- function(ou_uid = "cDGPF739ZZr", period = "2018Oct") {
 
   }
 
+  # Cleans up period names and renames EMR columns with shorter names
   df %<>%
+    dplyr::mutate(period = case_when(
+      period == "Oct 2018 to Sep 2019" ~ "FY2019",
+      period == "Oct 2017 to Sep 2018" ~ "FY2018",
+      TRUE ~ "ERROR"
+    )) %>%
     dplyr::mutate("EMR - HIV Testing Services" =
                     as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - HIV Testing Services`),
                   "EMR - Care and Treatment" =
@@ -286,37 +328,43 @@ analysis_getemrtable <- function(ou_uid = "cDGPF739ZZr", period = "2018Oct") {
                     as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - Early Infant Diagnosis (not Ped ART)`),
                   "EMR - HIV/TB" =
                     as.numeric(`EMR_SITE (N, NoApp, Serv Del Area) Service Delivery Area - HIV/TB`)) %>%
-    dplyr::select(-starts_with("EMR_SITE")) %>%
+    dplyr::select(-starts_with("EMR_SITE")) 
+  
+  # Transforms EMR indicators into boolean values
+  df %<>%
     dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6,
-                    namelevel7, `Site hierarchy`) %>%
-    # dplyr::group_by(namelevel1, namelevel2, namelevel3, namelevel4,
-    #                 namelevel5, `Site hierarchy`) %>%
+                    namelevel7, `Site hierarchy`, period) %>%
     dplyr::summarise("Has EMR - HIV Testing Services" =
                        ifelse(!is.na(sum(`EMR - HIV Testing Services`)),
-                              "yes", "no"),
+                              TRUE,FALSE),
                      "Has EMR - Care and Treatment" =
                        ifelse(!is.na(sum(`EMR - Care and Treatment`)),
-                              "yes", "no"),
+                              TRUE,FALSE),
                      "Has EMR - ANC and/or Maternity" =
                        ifelse(!is.na(sum(`EMR - ANC and/or Maternity`)),
-                              "yes", "no"),
+                              TRUE,FALSE),
                      "Has EMR - EID" =
                        ifelse(!is.na(sum(`EMR - EID`)),
-                              "yes", "no"),
+                              TRUE,FALSE),
                      "Has EMR - HIV/TB" =
                        ifelse(!is.na(sum(`EMR - HIV/TB`)),
-                              "yes", "no")) %>%
+                              TRUE,FALSE)) %>%
     dplyr::ungroup()
 
+  # Reorganizes table for export
+  df %<>%
+    dplyr::select(starts_with("namelevel"), period,
+                  starts_with("Has EMR"), `Site hierarchy`)
+  
 }
 
-analysis_combinedata <- function(indicators, emr) {
+combine_data <- function(indicators, emr) {
 
   emr %<>%
     select(-starts_with("namelevel"))
 
   df <- indicators %>%
-    dplyr::left_join(emr, by = "Site hierarchy")
+    dplyr::left_join(emr, by = c("Site hierarchy","period"))
 
   }
 
