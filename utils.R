@@ -171,8 +171,7 @@ analysis_getindicatorstable <- function(ou_uid = "cDGPF739ZZr",
     dplyr::mutate("PEPFAR" = as.numeric(PEPFAR)) %>%
     dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6, namelevel7,
                     indicator, `Site hierarchy`) %>%
-    dplyr::summarise(Mapping = max(),
-                     MOH = sum(MOH, na.rm = any(!is.na(MOH))),
+    dplyr::summarise(MOH = sum(MOH, na.rm = any(!is.na(MOH))),
                      PEPFAR = max(PEPFAR, na.rm = any(!is.na(PEPFAR)))) %>%
     dplyr::ungroup() %>%
     dplyr::group_by(indicator) %>%
