@@ -56,7 +56,9 @@ shinyServer(function(input, output, session) {
     shinyjs::disable("download_raw")
     shinyjs::disable("reset_input")
 
-    if (!user_input$authenticated | !ready$ok)  {
+    if (!user_input$datim_authenticated | 
+        !user_input$geoalign_authenticated | 
+        !ready$ok)  {
       return(NULL)
     } else {
 
@@ -117,18 +119,20 @@ shinyServer(function(input, output, session) {
     fetch()
     })
 
-  user_input <- reactiveValues(authenticated = FALSE,
+  user_input <- reactiveValues(datim_authenticated = FALSE,
+                               geoalign_authenticated = FALSE,
                                status = "",
-                               user_orgunit = NA)
+                               datim_user_orgunit = NA,
+                               geoalign_user_orgunit = NA)
 
-  observeEvent(input$login_button, {
+  observeEvent(input$datim_login_button, {
     is_logged_in <- FALSE
-    user_input$authenticated <- dhis_login(input$server,
-                                          input$user_name,
-                                          input$password)
-    if (user_input$authenticated) {
-      user_input$user_orgunit <- getOption("organisationUnit")
-      flog.info(paste0("User ", input$user_name, " logged in."),
+    user_input$datim_authenticated <- dhis_login(input$server,
+                                          input$datim_user_name,
+                                          input$datim_password)
+    if (user_input$datim_authenticated) {
+      user_input$datim_user_orgunit <- getOption("organisationUnit")
+      flog.info(paste0("User ", input$datim_user_name, " logged in."),
                 name = "datapack")
     } else {
       sendSweetAlert(
@@ -136,29 +140,62 @@ shinyServer(function(input, output, session) {
         title = "Login failed",
         text = "Please check your username/password!",
         type = "error")
-      flog.info(paste0("User ", input$user_name, " login failed."),
+      flog.info(paste0("User ", input$datim_user_name, " login failed."),
                 name = "datapack")
     }
   })
 
-  output$ui_login <- renderUI({
+  output$ui_datim_login <- renderUI({
+    wellPanel(fluidRow(
+      img(src = "pepfar.png", align = "center"),
+      h3("Welcome to the PEPFAR-MoH Data Alignment Activity Analysis app.", align = "center"),
+      h4("Please login with your DATIM credentials:", align = "center")
+    ),
+    fluidRow(
+      textInput("datim_user_name", "Username: ", width = "600px"),
+      passwordInput("datim_password", "Password:", width = "600px"),
+      actionButton("datim_login_button", "Log in!")
+    ))
+  })
+
+  observeEvent(input$geoalign_login_button, {
+    is_logged_in <- FALSE
+    user_input$geoalign_authenticated <- geoalign_login(input$server,
+                                                 input$geoalign_user_name,
+                                                 input$geoalign_password)
+    if (user_input$geoalign_authenticated) {
+      user_input$geoalign_user_orgunit <- getOption("organisationUnit")
+      flog.info(paste0("User ", input$geoalign_user_name, " logged in."),
+                name = "datapack")
+    } else {
+      sendSweetAlert(
+        session,
+        title = "Login failed",
+        text = "Please check your username/password!",
+        type = "error")
+      flog.info(paste0("User ", input$geoalign_user_name, " login failed."),
+                name = "datapack")
+    }
+  })
+
+  output$ui_geoalign_login <- renderUI({
     wellPanel(fluidRow(
       img(src = "pepfar.png", align = "center"),
       h4(
-        "Welcome to the MoH-DAA Analysis app. Please login with your DATIM credentials:"
+        "Thank you. Now please login with your GeoAlign credentials:"
       )
     ),
     fluidRow(
-      textInput("user_name", "Username: ", width = "600px"),
-      passwordInput("password", "Password:", width = "600px"),
-      actionButton("login_button", "Log in!")
+      textInput("geoalign_user_name", "Username: ", width = "600px"),
+      passwordInput("geoalign_password", "Password:", width = "600px"),
+      actionButton("geoalign_login_button", "Log in!")
     ))
   })
 
   output$ui <- renderUI({
 
-    if (user_input$authenticated == FALSE) {
-      ##### UI code for login page
+    if (user_input$datim_authenticated == FALSE) {
+      ##### UI code for DATIM login page
       fluidPage(fluidRow(
         column(
           width = 2,
@@ -167,7 +204,21 @@ shinyServer(function(input, output, session) {
           br(),
           br(),
           br(),
-          uiOutput("ui_login"),
+          uiOutput("ui_datim_login"),
+          uiOutput("pass")
+        )
+      ))
+    } else if (user_input$geoalign_authenticated == FALSE) {
+      ##### UI code for GeoAlign login page
+      fluidPage(fluidRow(
+        column(
+          width = 2,
+          offset = 5,
+          br(),
+          br(),
+          br(),
+          br(),
+          uiOutput("ui_geoalign_login"),
           uiOutput("pass")
         )
       ))
@@ -194,7 +245,7 @@ shinyServer(function(input, output, session) {
           selectInput("pe", "Period",
                       c("FY2019" = "2018Oct", "FY2018" = "2017Oct")),
           selectInput("ou", "Operating Unit",
-                      get_user_operating_units(user_input$user_orgunit)),
+                      get_user_operating_units(user_input$datim_user_orgunit)),
           actionButton("fetch", "Get Data"),
           tags$hr(),
           "Download Analysis Workbooks",
@@ -231,7 +282,7 @@ shinyServer(function(input, output, session) {
           tabPanel("Indicator Analysis", gt_output("indicator_table")),
           tabPanel("Pivot Table", rpivotTableOutput({
             "pivot"
-            }))
+            })),
           tabPanel("Country Comparison", plotOutput("country_comparison"))
         ))
       ))

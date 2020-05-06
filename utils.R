@@ -57,6 +57,22 @@ dhis_login <- function(baseurl, username, password) {
   }
 }
 
+geoalign_login <- function(geourl, username, password) {
+  httr::set_config(httr::config(http_version = 0))
+  url <- URLencode(URL = paste0(config$geourl, "api/me"))
+  #Logging in here will give us a cookie to reuse
+  r <- httr::GET(url,
+                 httr::authenticate(username, password),
+                 httr::timeout(60))
+  if (r$status != 200L) {
+    return(FALSE)
+  } else {
+    me <- jsonlite::fromJSON(httr::content(r, as = "text"))
+    options("organisationUnit" = me$organisationUnits$id)
+    return(TRUE)
+  }
+}
+
 d2_analyticsresponse <- function(url, remap_cols = TRUE) {
   d <- jsonlite::fromJSON(content(GET(url), "text"))
   if (NROW(d$rows) > 0) {
