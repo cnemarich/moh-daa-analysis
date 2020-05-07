@@ -37,19 +37,27 @@ shinyServer(function(input, output, session) {
     ready$ok <- FALSE
   })
 
-  site_filter <- reactiveValues(indicator_filter = NULL,
-                                period_filter = NULL)
+  discordance_filter <- reactiveValues(disc_indicator_filter = NULL)
+
+  observeEvent(input$discordanceInput, {
+
+    discordance_filter$disc_indicator_filter <- input$discordanceInput
+
+  })
+
+  site_filter <- reactiveValues(site_indicator_filter = NULL,
+                                site_period_filter = NULL)
 
   observeEvent(input$indicatorInput, {
 
-    site_filter$indicator_filter <- input$indicatorInput
+    site_filter$site_indicator_filter <- input$indicatorInput
 
     })
-  
+
   observeEvent(input$periodInput, {
-    
-    site_filter$period_filter <- input$periodInput
-    
+
+    site_filter$site_period_filter <- input$periodInput
+
   })
 
   fetch <- function() {
@@ -63,7 +71,8 @@ shinyServer(function(input, output, session) {
     shinyjs::disable("download_raw")
     shinyjs::disable("reset_input")
 
-    if (!user_input$datim_authenticated | 
+    if (!user_input$datim_authenticated |
+        !user_input$geoalign_authenticated |
         !ready$ok)  {
       return(NULL)
     } else {
@@ -153,7 +162,7 @@ shinyServer(function(input, output, session) {
 
   output$ui_datim_login <- renderUI({
     wellPanel(fluidRow(
-      img(src = "pepfar.png", align = "center"),
+      HTML('<center><img src="pepfar.png"></center>'),
       h3("Welcome to the PEPFAR-MoH Data Alignment Activity Analysis app.",
          align = "center"),
       h4("Please login with your DATIM credentials:", align = "center")
@@ -187,7 +196,7 @@ shinyServer(function(input, output, session) {
 
   output$ui_geoalign_login <- renderUI({
     wellPanel(fluidRow(
-      img(src = "pepfar.png", align = "center"),
+      HTML('<center><img src="pepfar.png"></center>'),
       h4(
         "Thank you. Now please login with your GeoAlign credentials:"
       )
@@ -286,12 +295,33 @@ shinyServer(function(input, output, session) {
                                options = list(`actions-box` = TRUE),
                                multiple = T),
                    plotOutput("discordance_graph")),
+          tabPanel(title = "Site Alignment Analysis",
+                   wellPanel(
+                     fluidRow(
+                       column(6,
+                              pickerInput("indicatorInput", "Indicator",
+                                          choices = c("HTS_TST", "PMTCT_STAT",
+                                                      "PMTCT_ART", "TB_PREV",
+                                                      "TX_CURR", "TX_NEW"),
+                                          selected = "HTS_TST",
+                                          options = list(`actions-box` = TRUE),
+                                          multiple = T)),
+                       column(6,
+                              pickerInput("periodInput", "Period",
+                                          choices = c("FY2019", "FY2018"),
+                                          selected = "FY2019",
+                                          options = list(`actions-box` = TRUE),
+                                          multiple = T))
+                       )),
+                   hr(),
                    dataTableOutput("site_table")),
-          tabPanel("Indicator Analysis", gt_output("indicator_table")),
-          tabPanel("Pivot Table", rpivotTableOutput({
-            "pivot"
-            })),
-          tabPanel("Country Comparison", plotOutput("country_comparison"))
+          tabPanel(title = "Indicator Analysis", gt_output("indicator_table")),
+          tabPanel(title = "Pivot Table",
+                   rpivotTableOutput({
+                     "pivot"
+                     })),
+          tabPanel(title = "Country Comparison",
+                   plotOutput("country_comparison"))
         ))
       ))
     }
