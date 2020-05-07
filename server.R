@@ -64,7 +64,6 @@ shinyServer(function(input, output, session) {
     shinyjs::disable("reset_input")
 
     if (!user_input$datim_authenticated | 
-        !user_input$geoalign_authenticated | 
         !ready$ok)  {
       return(NULL)
     } else {
@@ -277,17 +276,16 @@ shinyServer(function(input, output, session) {
         mainPanel(tabsetPanel(
           id = "main-panel",
           type = "tabs",
-          tabPanel("Discordance Graph", plotOutput("discordance_graph")),
-          tabPanel("Site Alignment Analysis",
-                   pickerInput("indicatorInput", "Indicator",
+          tabPanel(title = "Discordance Graph",
+                   pickerInput("discordanceInput", "Indicator",
                                choices = c("HTS_TST", "PMTCT_STAT", "PMTCT_ART",
                                            "TB_PREV", "TX_CURR", "TX_NEW"),
-                               options = list(`actions-box` = TRUE),
-                               multiple = F),
-                   pickerInput("periodInput", "Period",
-                               choices = c("FY2019", "FY2018"),
+                               selected = c("HTS_TST", "PMTCT_STAT",
+                                            "PMTCT_ART", "TB_PREV",
+                                            "TX_CURR", "TX_NEW"),
                                options = list(`actions-box` = TRUE),
                                multiple = T),
+                   plotOutput("discordance_graph")),
                    dataTableOutput("site_table")),
           tabPanel("Indicator Analysis", gt_output("indicator_table")),
           tabPanel("Pivot Table", rpivotTableOutput({
@@ -299,6 +297,25 @@ shinyServer(function(input, output, session) {
     }
   })
 
+  output$discordance_graph <- renderPlot({
+
+    d <- analysis_data()
+
+    if (!inherits(d, "error") & !is.null(d)) {
+
+      discordance_chart_data <- d %>%
+        purrr::pluck(., "analytics") %>%
+        dplyr::filter(indicator %in%
+                        discordance_filter$disc_indicator_filter) %>%
+        indicator_table_data()
+
+      discordance_chart(discordance_chart_data)
+
+    } else {
+      NULL
+    }
+  })
+
   output$site_table <- DT::renderDataTable({
 
     d <- analysis_data()
@@ -306,21 +323,14 @@ shinyServer(function(input, output, session) {
     if (!inherits(d, "error") & !is.null(d)) {
 
       table_formatted <- d %>%
-        purrr::pluck("analytics") %>%
-        dplyr::filter(`Reported on by both` == "both") %>%
-        dplyr::filter(indicator == site_filter$indicator_filter,
-                      period == site_filter$period_filter) %>%
-        dplyr::group_by(namelevel3, namelevel4, namelevel5,
-                        namelevel6, namelevel7, period, `Site hierarchy`) %>%
-        dplyr::summarise(PEPFAR = sum(PEPFAR),
-                         MOH = sum(MOH),
-                         Difference = sum(Difference),
-                         `Weighted difference` = sum(`Weighted difference`)) %>%
-        dplyr::ungroup()
+        purrr::pluck(., "analytics") %>%
+        dplyr::filter(indicator %in% site_filter$site_indicator_filter,
+                      period %in% site_filter$site_period_filter) %>%
+        site_table_data()
 
       DT::datatable(table_formatted, options = list(pageLength = 50)) %>%
         DT::formatPercentage("Weighted difference")
-        
+
     } else {
       NULL
     }
@@ -332,15 +342,8 @@ shinyServer(function(input, output, session) {
     expr = if (ready$ok) {
 
       analysis_data() %>%
-        purrr::pluck("analytics") %>%
-        dplyr::filter(`Reported on by both` == "both") %>%
-        dplyr::group_by(indicator) %>%
-        dplyr::summarise(Sites = n(),
-                         PEPFAR = sum(PEPFAR),
-                         MOH = sum(MOH),
-                         Difference = sum(Difference),
-                         `Weighted difference` = sum(`Weighted difference`)) %>%
-        dplyr::ungroup() %>%
+        purrr::pluck(., "analytics") %>%
+        indicator_table_data() %>%
         gt() %>%
         fmt_number(columns = vars(MOH, PEPFAR, Difference), decimals = 0) %>%
         fmt_percent(columns = vars(`Weighted difference`), decimals = 2)
