@@ -13,6 +13,7 @@ require(datapackr)
 
 config <- config::get()
 options("baseurl" = config$baseurl)
+options("geourl" = config$geourl)
 flog.appender(appender.file(config$log_path), name = "cop_memo")
 
 
@@ -356,6 +357,32 @@ get_emr_table <- function(ou_uid = "cDGPF739ZZr") {
   df %<>%
     dplyr::select(starts_with("namelevel"), period,
                   starts_with("Has EMR"), `Site hierarchy`)
+
+}
+
+get_geoalign_table <- function() {
+
+  # Assembles URL for API call
+  geo_url <- config$geourl
+
+  url_geo <- glue::glue("{geo_url}api/dataStore/
+                        MOH_country_indicators/2019") %>%
+    stringr::str_replace_all("[\r\n]", "") %>%
+    URLencode(.)
+
+  # Fetches data from the server
+  df <- jsonlite::fromJSON(httr::content(httr::GET(url_geo), as = "text"))
+
+  if (is.null(df)) {
+    return(NULL)
+  }
+
+  df %<>%
+    pivot_longer(-c(CountryName, CountryCode, generated),
+                 names_sep = "_(?=[^_]*$)",
+                 names_to = c("indicator", ".value")) %>%
+    select(CountryName, CountryCode, indicator,
+           hasDisagMapping, hasResultsData, generated)
 
 }
 

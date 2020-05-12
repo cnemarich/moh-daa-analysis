@@ -83,20 +83,25 @@ shinyServer(function(input, output, session) {
 
       withProgress(message = "Fetching data", value = 0, {
 
-      incProgress(0.25, detail = ("Fetching indicator data"))
+      incProgress(0.20, detail = ("Fetching indicator data"))
       indicators <- get_indicators_table(input$ou)
       Sys.sleep(0.5)
 
-      incProgress(0.25, detail = ("Fetching EMR data"))
+      incProgress(0.20, detail = ("Fetching EMR data"))
       emr <- get_emr_table(input$ou)
       Sys.sleep(0.5)
 
-      incProgress(0.25, detail = ("Merging datasets"))
+      incProgress(0.20, detail = ("Merging datasets"))
       analytics <- combine_data(indicators, emr)
       Sys.sleep(0.5)
 
-      incProgress(0.25, detail = ("Generating final dataset"))
-      my_data <- list(indicators = indicators, emr = emr, analytics = analytics)
+      incProgress(0.20, detail = ("Fetching GeoAlign data"))
+      geo <- get_geoalign_table()
+      Sys.sleep(0.5)
+
+      incProgress(0.20, detail = ("Generating final dataset"))
+      my_data <- list(indicators = indicators, emr = emr,
+                      analytics = analytics, geo = geo)
       Sys.sleep(0.5)
 
       })
