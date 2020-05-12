@@ -3,124 +3,216 @@ library(shinyjs)
 require(datimvalidation)
 require(shinyWidgets)
 require(magrittr)
+require(purrr)
+require(ggplot2)
+require(gt)
+require(rpivotTable)
 source("./utils.R")
+source("./visuals.R")
 
 shinyServer(function(input, output, session) {
-  
+
   ready <- reactiveValues(ok = FALSE)
-  
-  fetchMemoData <- function() {
-    
-    shinyjs::disable("downloadReport")
-    if (!user_input$authenticated | !ready$ok)  {
+
+  observeEvent(input$fetch, {
+    shinyjs::disable("pe")
+    shinyjs::disable("ou")
+    shinyjs::disable("fetch")
+    ready$ok <- TRUE
+    d <- analysis_data()
+  })
+
+  observeEvent(input$reset_input, {
+    shinyjs::enable("pe")
+    shinyjs::enable("ou")
+    shinyjs::enable("fetch")
+    shinyjs::disable("downloadInput")
+    shinyjs::disable("download_wb")
+    shinyjs::disable("download_raw")
+    shinyjs::disable("reset_input")
+    ready$ok <- FALSE
+  })
+
+  download_filter <- reactiveValues(wb_filter = NULL)
+
+  observeEvent(input$downloadInput, {
+
+    download_filter$wb_filter <- input$downloadInput
+
+  })
+
+  discordance_filter <- reactiveValues(disc_indicator_filter = NULL)
+
+  observeEvent(input$discordanceInput, {
+
+    discordance_filter$disc_indicator_filter <- input$discordanceInput
+
+  })
+
+  site_filter <- reactiveValues(site_indicator_filter = NULL,
+                                site_period_filter = NULL)
+
+  observeEvent(input$indicatorInput, {
+
+    site_filter$site_indicator_filter <- input$indicatorInput
+
+    })
+
+  observeEvent(input$periodInput, {
+
+    site_filter$site_period_filter <- input$periodInput
+
+  })
+
+  fetch <- function() {
+
+    shinyjs::disable("downloadInput")
+    shinyjs::disable("download_wb")
+    shinyjs::disable("download_raw")
+    shinyjs::disable("reset_input")
+
+    if (!user_input$datim_authenticated |
+        !user_input$geoalign_authenticated |
+        !ready$ok)  {
       return(NULL)
     } else {
-      
-      sendSweetAlert(
-        session,
-        title = "Fetching data",
-        text = "Sit tight. I'm getting your data",
-        btn_labels= NA
-      )
-      
-      prio<-memo_getPrioritizationTable(input$ou)
-      partners<-memo_getPartnersTable(input$ou)
-      shinyjs::enable("fetch")
-      shinyjs::enable("downloadReport")
-      closeSweetAlert(session)
-      my_data<-list(prio=prio,partners=partners)
-      if (is.null(my_data$prio) & is.null(my_data$partners)) {
+
+      shinyjs::disable("pe")
+      shinyjs::disable("ou")
+      shinyjs::disable("fetch")
+
+      withProgress(message = "Fetching data", value = 0, {
+
+      incProgress(0.20, detail = ("Fetching indicator data"))
+      indicators <- get_indicators_table(input$ou)
+      Sys.sleep(0.5)
+
+      incProgress(0.20, detail = ("Fetching EMR data"))
+      emr <- get_emr_table(input$ou)
+      Sys.sleep(0.5)
+
+      incProgress(0.20, detail = ("Merging datasets"))
+      analytics <- combine_data(indicators, emr)
+      Sys.sleep(0.5)
+
+      incProgress(0.20, detail = ("Fetching GeoAlign data"))
+      geo <- get_geoalign_table()
+      Sys.sleep(0.5)
+
+      incProgress(0.20, detail = ("Generating final dataset"))
+      my_data <- list(indicators = indicators, emr = emr,
+                      analytics = analytics, geo = geo)
+      Sys.sleep(0.5)
+
+      })
+
+      if (is.null(my_data$emr) & is.null(my_data$indicators)) {
         sendSweetAlert(
           session,
           title = "Oops!",
           text = "Sorry, I could not find any data for you!"
         )
+
+        shinyjs::enable("reset_input")
+
+        ready$ok <- FALSE
+
+        return(NULL)
+
+      } else {
+
+        shinyjs::enable("downloadInput")
+        shinyjs::enable("download_wb")
+        shinyjs::enable("download_raw")
+        shinyjs::enable("reset_input")
+
+        return(my_data)
       }
-      return(my_data)
     }
-    
   }
-  
-  memo_data <- reactive({
-    fetchMemoData()
-  })
-  
-  user_input <- reactiveValues(authenticated = FALSE, 
+
+  analysis_data <- reactive({
+    fetch()
+    })
+
+  user_input <- reactiveValues(datim_authenticated = FALSE,
+                               geoalign_authenticated = FALSE,
                                status = "",
-                               user_orgunit = NA)
-  
-  observeEvent(input$login_button, {
+                               datim_user_orgunit = NA,
+                               geoalign_user_orgunit = NA)
+
+  observeEvent(input$datim_login_button, {
     is_logged_in <- FALSE
-    user_input$authenticated <- DHISLogin(input$server, input$user_name, input$password)
-    if (user_input$authenticated) {
-      user_input$user_orgunit<-getOption("organisationUnit")
-      flog.info(paste0("User ", input$user_name, " logged in."), name = "datapack")
+    user_input$datim_authenticated <- dhis_login(input$server,
+                                          input$datim_user_name,
+                                          input$datim_password)
+    if (user_input$datim_authenticated) {
+      user_input$datim_user_orgunit <- getOption("organisationUnit")
+      flog.info(paste0("User ", input$datim_user_name, " logged in."),
+                name = "datapack")
     } else {
       sendSweetAlert(
         session,
         title = "Login failed",
         text = "Please check your username/password!",
         type = "error")
-      flog.info(paste0("User ", input$user_name, " login failed."), name = "datapack")
+      flog.info(paste0("User ", input$datim_user_name, " login failed."),
+                name = "datapack")
     }
   })
-  
-  output$prio_table <- DT::renderDataTable({
-    
-    d <- memo_data() %>% purrr::pluck("prio")
-    
-    if (!inherits(d, "error") & !is.null(d)) {
-      
-      DT::datatable(d,options = list(pageLength = 50, 
-                                     columnDefs = list(list(className = 'dt-right', 
-                                                            targets = 3:8)))) %>% 
-        formatCurrency(3:8, '',digits =0)
-      
-    } else
-    {
-      NULL
-    }
-  })
-  
-  output$partners_table <- DT::renderDataTable({
-    
-    d <- memo_data() %>% purrr::pluck("partners")
-    
-    if (!inherits(d, "error") & !is.null(d)) {
-      
-      DT::datatable(d,options = list(pageLength = 50, 
-                                     columnDefs = list(list(className = 'dt-right', 
-                                                            targets = 3:dim(d)[2])))) %>% 
-        formatCurrency(3:dim(d)[2], '',digits =0)
-      
-    } else
-    {
-      NULL
-    }
-  })
-  
-  observeEvent(input$fetch, {
-    shinyjs::disable("fetch")
-    ready$ok <- TRUE
-  })
-  
-  output$uiLogin <- renderUI({
+
+  output$ui_datim_login <- renderUI({
     wellPanel(fluidRow(
-      img(src = 'pepfar.png', align = "center"),
+      HTML('<center><img src="pepfar.png"></center>'),
+      h3("Welcome to the PEPFAR-MoH Data Alignment Activity Analysis app.",
+         align = "center"),
+      h4("Please login with your DATIM credentials:", align = "center")
+    ),
+    fluidRow(
+      textInput("datim_user_name", "Username: ", width = "600px"),
+      passwordInput("datim_password", "Password:", width = "600px"),
+      actionButton("datim_login_button", "Log in!")
+    ))
+  })
+
+  observeEvent(input$geoalign_login_button, {
+    is_logged_in <- FALSE
+    user_input$geoalign_authenticated <- geoalign_login(input$server,
+                                                 input$geoalign_user_name,
+                                                 input$geoalign_password)
+    if (user_input$geoalign_authenticated) {
+      user_input$geoalign_user_orgunit <- getOption("organisationUnit")
+      flog.info(paste0("User ", input$geoalign_user_name, " logged in."),
+                name = "datapack")
+    } else {
+      sendSweetAlert(
+        session,
+        title = "Login failed",
+        text = "Please check your username/password!",
+        type = "error")
+      flog.info(paste0("User ", input$geoalign_user_name, " login failed."),
+                name = "datapack")
+    }
+  })
+
+  output$ui_geoalign_login <- renderUI({
+    wellPanel(fluidRow(
+      HTML('<center><img src="pepfar.png"></center>'),
       h4(
-        "Welcome to the  COP20 DataPack Validation App. Please login with your DATIM credentials:"
+        "Thank you. Now please login with your GeoAlign credentials:"
       )
     ),
     fluidRow(
-      textInput("user_name", "Username: ", width = "600px"),
-      passwordInput("password", "Password:", width = "600px"),
-      actionButton("login_button", "Log in!")
+      textInput("geoalign_user_name", "Username: ", width = "600px"),
+      passwordInput("geoalign_password", "Password:", width = "600px"),
+      actionButton("geoalign_login_button", "Log in!")
     ))
   })
-  
+
   output$ui <- renderUI({
-    if (user_input$authenticated == FALSE) {
-      ##### UI code for login page
+
+    if (user_input$datim_authenticated == FALSE) {
+      ##### UI code for DATIM login page
       fluidPage(fluidRow(
         column(
           width = 2,
@@ -129,15 +221,29 @@ shinyServer(function(input, output, session) {
           br(),
           br(),
           br(),
-          uiOutput("uiLogin"),
+          uiOutput("ui_datim_login"),
+          uiOutput("pass")
+        )
+      ))
+    } else if (user_input$geoalign_authenticated == FALSE) {
+      ##### UI code for GeoAlign login page
+      fluidPage(fluidRow(
+        column(
+          width = 2,
+          offset = 5,
+          br(),
+          br(),
+          br(),
+          br(),
+          uiOutput("ui_geoalign_login"),
           uiOutput("pass")
         )
       ))
     } else {
-      wiki_url <- a("Datapack Wiki",
-                    href = "https://github.com/pepfar-datim/Data-Pack-Feedback/wiki",
+      wiki_url <- a("Data Alignment Support Site",
+                    href = "https://datim.zendesk.com/hc/en-us/categories/360000927432-PEPFAR-MoH-Data-Alignment-Activity",
                     target = "_blank")
-      
+
       fluidPage(tags$head(
         tags$style(
           ".shiny-notification {
@@ -153,49 +259,229 @@ shinyServer(function(input, output, session) {
           id = "side-panel",
           tagList(wiki_url),
           tags$hr(),
-          selectInput("ou", "Operating Unit",getUserOperatingUnits(user_input$user_orgunit)),
+          selectInput("ou", "Operating Unit",
+                      get_user_operating_units(user_input$datim_user_orgunit)),
+          actionButton("fetch", "Get Data"),
           tags$hr(),
-          actionButton("fetch","Get Data"),
-          tags$hr(),
-          downloadButton("downloadReport", "Download Report"),
+          "Download Analysis Workbooks",
+          disabled(selectInput("downloadInput", "Choose a dataset:",
+                               choices = c("HTS_TST", "PMTCT_STAT", "PMTCT_ART",
+                                           "TB_PREV", "TX_CURR", "TX_NEW")),
+                   downloadButton("download_wb", "Download",
+                                  style = "width:100%;text-align: left;"),
+                   tags$hr(),
+                   downloadButton("download_raw", "Raw data",
+                                  style = "width:100%;text-align: left;"),
+                   tags$hr(),
+                   actionButton("reset_input", "Reset Inputs")),
           width = 2
-        ),
+          ),
         mainPanel(tabsetPanel(
           id = "main-panel",
           type = "tabs",
-          tabPanel("Prioritization", dataTableOutput("prio_table")),
-          tabPanel("Partners/Agencies", dataTableOutput("partners_table"))
+          tabPanel(title = "Data Availability",
+                   gt::gt_output("data_availability")),
+          tabPanel(title = "Discordance Graph",
+                   pickerInput("discordanceInput", "Indicator",
+                               choices = c("HTS_TST", "PMTCT_STAT", "PMTCT_ART",
+                                           "TB_PREV", "TX_CURR", "TX_NEW"),
+                               selected = c("HTS_TST", "PMTCT_STAT",
+                                            "PMTCT_ART", "TB_PREV",
+                                            "TX_CURR", "TX_NEW"),
+                               options = list(`actions-box` = TRUE),
+                               multiple = T),
+                   plotOutput("discordance_graph")),
+          tabPanel(title = "Site Alignment Analysis",
+                   wellPanel(
+                     fluidRow(
+                       column(6,
+                              pickerInput("indicatorInput", "Indicator",
+                                          choices = c("HTS_TST", "PMTCT_STAT",
+                                                      "PMTCT_ART", "TB_PREV",
+                                                      "TX_CURR", "TX_NEW"),
+                                          selected = "HTS_TST",
+                                          options = list(`actions-box` = TRUE),
+                                          multiple = T)),
+                       column(6,
+                              pickerInput("periodInput", "Period",
+                                          choices = c("FY2019" = 2019,
+                                                      "FY2018" = 2018),
+                                          selected = 2019,
+                                          options = list(`actions-box` = TRUE),
+                                          multiple = T))
+                       )),
+                   hr(),
+                   dataTableOutput("site_table")),
+          tabPanel(title = "Indicator Analysis",
+                   gt::gt_output("indicator_table")),
+          tabPanel(title = "Pivot Table",
+                   rpivotTableOutput({
+                     "pivot"
+                     })),
+          tabPanel(title = "Country Comparison",
+                   plotOutput("country_comparison"))
         ))
       ))
     }
-    
   })
-  
-  output$downloadReport <- downloadHandler(
-    filename = function() {
-      
-      
-      prefix <-"cop_20_approval_memo_"
-      date<-format(Sys.time(),"%Y%m%d_%H%M%S")
-      paste0(paste(prefix,date,sep="_"),".xlsx")
-      
-    },
-    content = function(file) {
-      
-      d <- memo_data()
-      wb <- openxlsx::createWorkbook()
-      openxlsx::addWorksheet(wb,"Prioritization")
-      openxlsx::writeDataTable(wb = wb,
-                               sheet = "Prioritization",x = d$prio)
-      
-      
-      openxlsx::addWorksheet(wb,"Partners_Agencies")
-      openxlsx::writeDataTable(wb = wb,
-                               sheet = "Partners_Agencies",x = d$partners)
-      openxlsx::saveWorkbook(wb,file=file,overwrite = TRUE)
+
+  output$data_availability <- gt::render_gt(
+
+    expr = if (ready$ok) {
+
+      analysis_data() %>%
+        purrr::pluck(., "geo") %>%
+        dplyr::filter(CountryName == get_ou_name(input$ou)) %>%
+        dplyr::select(indicator, hasDisagMapping, hasResultsData, generated) %>%
+        gt(rowname_col = "indicator") %>%
+        gt::fmt_datetime(columns = vars(generated))
+
+    } else {
+      NULL
+      },
+    height = px(700),
+    width = "70%"
+
+    )
+
+  output$discordance_graph <- renderPlot({
+
+    d <- analysis_data()
+
+    if (!inherits(d, "error") & !is.null(d)) {
+
+      discordance_chart_data <- d %>%
+        purrr::pluck(., "analytics") %>%
+        dplyr::filter(indicator %in%
+                        discordance_filter$disc_indicator_filter) %>%
+        indicator_table_data()
+
+      discordance_chart(discordance_chart_data)
+
+    } else {
+      NULL
     }
+  })
+
+  output$site_table <- DT::renderDataTable({
+
+    d <- analysis_data()
+
+    if (!inherits(d, "error") & !is.null(d)) {
+
+      table_formatted <- d %>%
+        purrr::pluck(., "analytics") %>%
+        dplyr::filter(indicator %in% site_filter$site_indicator_filter,
+                      period %in% site_filter$site_period_filter) %>%
+        site_table_data(., input$ou)
+
+      DT::datatable(table_formatted, options = list(pageLength = 50)) %>%
+        DT::formatPercentage("Weighted difference")
+
+    } else {
+      NULL
+    }
+  })
+
+  output$indicator_table <- render_gt(
+
+    expr = if (ready$ok) {
+
+      analysis_data() %>%
+        purrr::pluck(., "analytics") %>%
+        indicator_table_data(.) %>%
+        dplyr::group_by(., indicator) %>%
+        gt(rowname_col = "period") %>%
+        gt::tab_spanner(
+          label = "Reported figures",
+          columns = vars(PEPFAR, MOH, Difference)
+        ) %>%
+        cols_align(
+          align = "center",
+          columns = vars(Sites,
+                         MOH,
+                         PEPFAR,
+                         Difference)
+        ) %>%
+        tab_style(
+          style = cell_text(size = px(12)),
+          locations = cells_body(
+            columns = vars(period,
+                           Sites,
+                           MOH,
+                           PEPFAR,
+                           Difference,
+                           `Weighted difference`))
+        ) %>%
+        gt::fmt_number(columns = vars(MOH,
+                                      PEPFAR,
+                                      Difference),
+                       decimals = 0) %>%
+        gt::fmt_percent(columns = vars(`Weighted difference`),
+                        decimals = 2) %>%
+        gt::cols_label(
+          Sites = html("No. of sites<br>reported by both")
+        ) %>%
+        gt::tab_options(
+          column_labels.font.size = px(16),
+          table.font.size = px(14),
+          data_row.padding = px(5)
+        )
+
+    } else {
+      NULL
+      },
+    height = px(650),
+    width = px(900)
+
   )
-  
+
+  output$pivot <- renderRpivotTable({
+
+    d <- analysis_data()
+
+    if (!is.null(d)) {
+
+      if (is.null(d$analytics)) {
+        return(NULL)
+        }
+      moh_pivot(d)
+
+    } else {
+      NULL
+      }
+  })
+
+  output$download_wb <- downloadHandler(
+    filename = function() {
+
+      ou_name <- get_ou_name(input$ou)
+
+      name <- wb_filename(ou = ou_name,
+                          my_indicator = download_filter$wb_filter)
+
+      },
+    content = function(file) {
+
+      d <- analysis_data()
+      wb <- wb_filecontent(d, download_filter$wb_filter, file)
+      return(wb)
+
+    })
+
+  output$download_raw <- downloadHandler(
+    filename = function() {
+
+      ou_name <- get_ou_name(input$ou)
+      name <- raw_filename(ou = ou_name)
+
+      },
+    content = function(file) {
+
+      d <- analysis_data()
+      wb <- raw_filecontent(d, file)
+      return(wb)
+
+      })
+
 })
-
-
