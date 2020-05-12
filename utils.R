@@ -72,13 +72,42 @@ get_user_operating_units <- function(uid) {
   # If user does not have global access, only return their assigned country.
   if (uid != "ybg3MO3hcf4") {
     ous %<>%
-      dplyr::filter(model_uid == uid)
+      dplyr::filter(countryUID == uid)
   }
   setNames(ous$countryUID, ous$countryName)
 }
 
+get_ou_name <- function(ou_uid) {
+
+  ous <- get_user_operating_units(ou_uid) %>%
+    data.frame()
+
+  idx <- which(ous$. == ou_uid)[1]
+
+  name <- rownames(ous)[idx]
+
+  return(name)
+
+}
+
+get_ou_facility_level <- function(ou_uid) {
+
+  # List of all countries by UID where the facilities are at level 7
+  level_sevens <- c("Qh4XMQJhbk8", "ds0ADyc9UCU", "IH1kchw86uA", "JTypsdEUNPw",
+                    "HfVjCurKxh2", "lZsCb6y0KDX", "XtxUYCsDWrR", "cDGPF739ZZr",
+                    "WLG0z5NxQs8", "mdXu6iCbn2G", "FETQ6OmnsKB")
+
+  # Returns the level at which facilities are listed for the country
+  if (ou_uid %in% level_sevens) {
+    return(7)
+  } else {
+    return(6)
+  }
+
+}
+
 d2_analyticsresponse <- function(url, remap_cols = TRUE) {
-  d <- jsonlite::fromJSON(content(GET(url), "text"))
+  d <- jsonlite::fromJSON(httr::content(httr::GET(url), as = "text"))
   if (NROW(d$rows) > 0) {
     metadata <- do.call(rbind,
                         lapply(d$metaData$items,
@@ -180,8 +209,7 @@ get_indicators_table <- function(ou_uid = "cDGPF739ZZr") {
                     "PEPFAR" = "00200 - PEPFAR-MOH align: PEPFAR Data") %>%
       dplyr::filter(!is.na(namelevel6) & (namelevel6 != "")) %>%
       dplyr::mutate("Site hierarchy" = paste(namelevel3, namelevel4, namelevel5,
-                                            namelevel6, sep = " / ")) %>%
-      dplyr::mutate("namelevel7" = "")
+                                            namelevel6, sep = " / "))
 
   }
 
@@ -194,12 +222,28 @@ get_indicators_table <- function(ou_uid = "cDGPF739ZZr") {
       TRUE ~ NA_real_
     )) %>%
     dplyr::mutate("MOH" = as.numeric(MOH)) %>%
-    dplyr::mutate("PEPFAR" = as.numeric(PEPFAR)) %>%
-    dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6, namelevel7,
+    dplyr::mutate("PEPFAR" = as.numeric(PEPFAR))
+
+  # Summarizes MOH and PEPFAR data up from coarse and fine disaggregates
+  if (ou_lvl == 7) {
+
+    df %<>%
+      dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6,
+                      namelevel7, indicator, period, `Site hierarchy`) %>%
+      dplyr::summarise(MOH = sum(MOH, na.rm = any(!is.na(MOH))),
+                       PEPFAR = max(PEPFAR, na.rm = any(!is.na(PEPFAR)))) %>%
+      dplyr::ungroup()
+
+  } else {
+
+    df %<>%
+      dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6,
                     indicator, period, `Site hierarchy`) %>%
-    dplyr::summarise(MOH = sum(MOH, na.rm = any(!is.na(MOH))),
-                     PEPFAR = max(PEPFAR, na.rm = any(!is.na(PEPFAR)))) %>%
-    dplyr::ungroup()
+      dplyr::summarise(MOH = sum(MOH, na.rm = any(!is.na(MOH))),
+                       PEPFAR = max(PEPFAR, na.rm = any(!is.na(PEPFAR)))) %>%
+      dplyr::ungroup()
+
+    }
 
   # Creates basic summary columns about reporting institutions and figures
   df %<>%
@@ -308,8 +352,7 @@ get_emr_table <- function(ou_uid = "cDGPF739ZZr") {
                     "period" = periodname,
                     starts_with("EMR_SITE")) %>%
       dplyr::mutate("Site hierarchy" = paste(namelevel3, namelevel4, namelevel5,
-                                            namelevel6, sep = " / ")) %>%
-      dplyr::mutate("namelevel7" = "")
+                                            namelevel6, sep = " / "))
 
   }
 
@@ -333,9 +376,33 @@ get_emr_table <- function(ou_uid = "cDGPF739ZZr") {
     dplyr::select(-starts_with("EMR_SITE"))
 
   # Transforms EMR indicators into boolean values
+  if (ou_lvl == 7) {
+
+    df %<>%
+      dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6,
+                      namelevel7, `Site hierarchy`, period) %>%
+      dplyr::summarise("Has EMR - HIV Testing Services" =
+                         ifelse(!is.na(sum(`EMR - HIV Testing Services`)),
+                                TRUE, FALSE),
+                       "Has EMR - Care and Treatment" =
+                         ifelse(!is.na(sum(`EMR - Care and Treatment`)),
+                                TRUE, FALSE),
+                       "Has EMR - ANC and/or Maternity" =
+                         ifelse(!is.na(sum(`EMR - ANC and/or Maternity`)),
+                                TRUE, FALSE),
+                       "Has EMR - EID" =
+                         ifelse(!is.na(sum(`EMR - EID`)),
+                                TRUE, FALSE),
+                       "Has EMR - HIV/TB" =
+                         ifelse(!is.na(sum(`EMR - HIV/TB`)),
+                                TRUE, FALSE)) %>%
+    dplyr::ungroup()
+
+} else {
+
   df %<>%
     dplyr::group_by(namelevel3, namelevel4, namelevel5, namelevel6,
-                    namelevel7, `Site hierarchy`, period) %>%
+                    `Site hierarchy`, period) %>%
     dplyr::summarise("Has EMR - HIV Testing Services" =
                        ifelse(!is.na(sum(`EMR - HIV Testing Services`)),
                               TRUE, FALSE),
@@ -352,6 +419,8 @@ get_emr_table <- function(ou_uid = "cDGPF739ZZr") {
                        ifelse(!is.na(sum(`EMR - HIV/TB`)),
                               TRUE, FALSE)) %>%
     dplyr::ungroup()
+
+}
 
   # Reorganizes table for export
   df %<>%
