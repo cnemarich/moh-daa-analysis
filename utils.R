@@ -2,6 +2,7 @@ require(config)
 require(futile.logger)
 require(glue)
 require(dplyr)
+require(purrr)
 require(tibble)
 require(jsonlite)
 require(httr)
@@ -379,18 +380,64 @@ wb_filename <- function(ou, my_indicator) {
 
 wb_filecontent <- function(d, my_indicator, file) {
 
-  d %<>%
-    purrr::pluck("indicators") %>%
+  analytics <- d %>%
+    purrr::pluck(., "analytics") %>%
     dplyr::filter(indicator == my_indicator) %>%
     dplyr::select(-indicator)
 
-
   wb <- openxlsx::loadWorkbook(file = file.path("templates", "template.xlsx"))
-  openxlsx::writeData(wb = wb,
-                      sheet = "RawData",
-                      x = d,
-                      xy = c(1, 2),
-                      colNames = F, rowNames = F, withFilter = FALSE)
+
+  openxlsx::removeTable(wb = wb, sheet = "RawData", table = "Table2")
+
+  openxlsx::writeDataTable(
+    wb = wb,
+    sheet = "RawData",
+    x = analytics,
+    xy = c(1, 1),
+    colNames = T,
+    rowNames = F,
+    tableStyle = "TableStyleMedium16",
+    tableName = "Table2",
+    withFilter = TRUE,
+    bandedRows = TRUE
+    )
+
+  openxlsx::saveWorkbook(wb, file = file, overwrite = TRUE)
+
+  return(wb)
+
+}
+
+raw_filename <- function(ou) {
+
+  suffix <- "raw_data"
+  date <- format(Sys.time(), "%Y%m%d_%H%M%S")
+  name <- paste0(paste(ou, suffix, date, sep = "_"), ".xlsx")
+  return(name)
+
+}
+
+raw_filecontent <- function(d, file) {
+
+  analytics <- d %>%
+    purrr::pluck("analytics")
+
+  wb <- openxlsx::createWorkbook()
+
+  openxlsx::addWorksheet(wb, "RawData")
+
+  openxlsx::writeDataTable(wb = wb,
+                           sheet = "RawData",
+                           x = analytics,
+                           xy = c(1, 1),
+                           colNames = T,
+                           rowNames = F,
+                           tableStyle = "TableStyleMedium16",
+                           tableName = "RawData",
+                           withFilter = TRUE,
+                           bandedRows = TRUE
+                           )
+
   openxlsx::saveWorkbook(wb, file = file, overwrite = TRUE)
   return(wb)
 

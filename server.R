@@ -26,15 +26,19 @@ shinyServer(function(input, output, session) {
     shinyjs::enable("pe")
     shinyjs::enable("ou")
     shinyjs::enable("fetch")
-    shinyjs::disable("download_hts")
-    shinyjs::disable("download_pmtctart")
-    shinyjs::disable("download_pmtctstat")
-    shinyjs::disable("download_tbprev")
-    shinyjs::disable("download_txnew")
-    shinyjs::disable("download_txcurr")
+    shinyjs::disable("downloadInput")
+    shinyjs::disable("download_wb")
     shinyjs::disable("download_raw")
     shinyjs::disable("reset_input")
     ready$ok <- FALSE
+  })
+
+  download_filter <- reactiveValues(wb_filter = NULL)
+
+  observeEvent(input$downloadInput, {
+
+    download_filter$wb_filter <- input$downloadInput
+
   })
 
   discordance_filter <- reactiveValues(disc_indicator_filter = NULL)
@@ -62,12 +66,8 @@ shinyServer(function(input, output, session) {
 
   fetch <- function() {
 
-    shinyjs::disable("download_hts")
-    shinyjs::disable("download_pmtctart")
-    shinyjs::disable("download_pmtctstat")
-    shinyjs::disable("download_tbprev")
-    shinyjs::disable("download_txnew")
-    shinyjs::disable("download_txcurr")
+    shinyjs::disable("downloadInput")
+    shinyjs::disable("download_wb")
     shinyjs::disable("download_raw")
     shinyjs::disable("reset_input")
 
@@ -116,12 +116,8 @@ shinyServer(function(input, output, session) {
 
       } else {
 
-        shinyjs::enable("download_hts")
-        shinyjs::enable("download_pmtctart")
-        shinyjs::enable("download_pmtctstat")
-        shinyjs::enable("download_tbprev")
-        shinyjs::enable("download_txnew")
-        shinyjs::enable("download_txcurr")
+        shinyjs::enable("downloadInput")
+        shinyjs::enable("download_wb")
         shinyjs::enable("download_raw")
         shinyjs::enable("reset_input")
 
@@ -263,25 +259,18 @@ shinyServer(function(input, output, session) {
           actionButton("fetch", "Get Data"),
           tags$hr(),
           "Download Analysis Workbooks",
-          disabled(downloadButton("download_hts", "HTS_TST",
+          disabled(selectInput("downloadInput", "Choose a dataset:",
+                               choices = c("HTS_TST", "PMTCT_STAT", "PMTCT_ART",
+                                           "TB_PREV", "TX_CURR", "TX_NEW")),
+                   downloadButton("download_wb", "Download",
                                   style = "width:100%;text-align: left;"),
-          downloadButton("download_pmtctart", "PMTCT_ART",
-                         style = "width:100%;text-align: left;"),
-          downloadButton("download_pmtctstat", "PMTCT_STAT",
-                         style = "width:100%;text-align: left;"),
-          downloadButton("download_tbprev", "TB_PREV",
-                         style = "width:100%;text-align: left;"),
-          downloadButton("download_txcurr", "TX_CURR",
-                         style = "width:100%;text-align: left;"),
-          downloadButton("download_txnew", "TX_NEW",
-                         style = "width:100%;text-align: left;"),
-          tags$hr(),
-          downloadButton("download_raw", "Raw data",
-                         style = "width:100%;text-align: left;"),
-          tags$hr(),
-          actionButton("reset_input", "Reset Inputs")),
+                   tags$hr(),
+                   downloadButton("download_raw", "Raw data",
+                                  style = "width:100%;text-align: left;"),
+                   tags$hr(),
+                   actionButton("reset_input", "Reset Inputs")),
           width = 2
-        ),
+          ),
         mainPanel(tabsetPanel(
           id = "main-panel",
           type = "tabs",
@@ -402,82 +391,36 @@ shinyServer(function(input, output, session) {
       }
   })
 
-  output$download_hts <- downloadHandler(
-    filename = wb_filename(ou = input$ou, my_indicator = "HTS"),
+  output$download_wb <- downloadHandler(
+    filename = function() {
+
+      ou_name <- get_ou_name(input$ou)
+
+      name <- wb_filename(ou = ou_name,
+                          my_indicator = download_filter$wb_filter)
+
+      },
     content = function(file) {
 
       d <- analysis_data()
-      wb <- wb_filecontent(d, "HTS_TST", file)
+      wb <- wb_filecontent(d, download_filter$wb_filter, file)
       return(wb)
-
-    })
-
-  output$download_pmtctart <- downloadHandler(
-    filename = wb_filename(ou = input$ou, my_indicator = "PMTCT_ART"),
-    content = function(file) {
-
-      d <- analysis_data()
-      wb <- wb_filecontent(d, "PMTCT_ART", file)
-      return(wb)
-
-    })
-
-  output$download_pmtctstat <- downloadHandler(
-    filename = wb_filename(ou = input$ou, my_indicator = "PMTCT_STAT"),
-    content = function(file) {
-
-      d <- analysis_data()
-      wb <- wb_filecontent(d, "PMTCT_STAT", file)
-      return(wb)
-
-    })
-
-  output$download_tbprev <- downloadHandler(
-    filename = wb_filename(ou = input$ou, my_indicator = "TB"),
-    content = function(file) {
-
-      d <- analysis_data()
-      wb <- wb_filecontent(d, "TB_PREV", file)
-      return(wb)
-
-    })
-
-  output$download_txcurr <- downloadHandler(
-    filename = wb_filename(ou = input$ou, my_indicator = "TX_CURR"),
-    content = function(file) {
-
-      d <- analysis_data()
-      wb <- wb_filecontent(d, "TX_CURR", file)
-      return(wb)
-
-    })
-
-  output$download_txnew <- downloadHandler(
-    filename = wb_filename(ou = input$ou, my_indicator = "TX_NEW"),
-    content = function(file) {
-
-      d <- analysis_data()
-      wb <- wb_filecontent(d, "TX_NEW", file)
 
     })
 
   output$download_raw <- downloadHandler(
     filename = function() {
 
-      suffix <- "raw_data"
-      date <- format(Sys.time(), "%Y%m%d_%H%M%S")
-      name <- paste0(paste(input$ou, suffix, date, sep = "_"), ".xlsx")
+      ou_name <- get_ou_name(input$ou)
+      name <- raw_filename(ou = ou_name)
 
       },
     content = function(file) {
 
       d <- analysis_data()
-      wb <- openxlsx::createWorkbook()
-      openxlsx::addWorksheet(wb, "RawData")
-      openxlsx::writeDataTable(wb = wb, sheet = "RawData", x = d$analytics)
-      openxlsx::saveWorkbook(wb, file = file, overwrite = TRUE)
+      wb <- raw_filecontent(d, file)
       return(wb)
 
-    })
+      })
 
 })
