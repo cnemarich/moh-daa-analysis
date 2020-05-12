@@ -128,18 +128,21 @@ d2_analyticsresponse <- function(url, remap_cols = TRUE) {
     }
 }
 
-get_ou_facility_level <- function(ou_uid) {
+get_org_unit_lvls <- function() {
 
-  # List of all countries by UID where the facilities are at level 7
-  level_sevens <- c("Qh4XMQJhbk8", "ds0ADyc9UCU", "IH1kchw86uA", "JTypsdEUNPw",
-                    "HfVjCurKxh2", "lZsCb6y0KDX", "XtxUYCsDWrR", "cDGPF739ZZr",
-                    "WLG0z5NxQs8", "mdXu6iCbn2G", "FETQ6OmnsKB")
+  # Assembles URL for API call
+  base_url <- config$baseurl
 
-  # Returns the level at which facilities are listed for the country
-  if (ou_uid %in% level_sevens) {
-    return(7)
-  } else {
-    return(6)
+  url_hie <- glue::glue("{base_url}api/dataStore/
+                        dataSetAssignments/orgUnitLevels") %>%
+    stringr::str_replace_all("[\r\n]", "") %>%
+    URLencode(.)
+
+  # Fetches data from the server
+  df <- jsonlite::fromJSON(httr::content(httr::GET(url_hie), as = "text"))
+
+  if (is.null(df)) {
+    return(NULL)
   }
 
 }
