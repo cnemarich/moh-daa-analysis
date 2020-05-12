@@ -5,18 +5,39 @@ library(scales)
 library(RColorBrewer)
 require(rpivotTable)
 
-site_table_data <- function(df) {
+site_table_data <- function(df, ou_uid) {
 
-  df %>%
-    dplyr::filter(`Reported on by both` == "both") %>%
-    dplyr::group_by(namelevel3, namelevel4, namelevel5,
-                    namelevel6, namelevel7, indicator,
-                    period, `Site hierarchy`) %>%
-    dplyr::summarise(PEPFAR = sum(PEPFAR),
-                     MOH = sum(MOH),
-                     Difference = sum(Difference),
-                     `Weighted difference` = sum(`Weighted difference`)) %>%
-    dplyr::ungroup()
+  ou_lvl <- get_ou_facility_level(ou_uid)
+
+  if (ou_lvl == 7) {
+
+    df %<>%
+      dplyr::filter(`Reported on by both` == "both") %>%
+      dplyr::group_by(namelevel3, namelevel4, namelevel5,
+                      namelevel6, namelevel7, indicator,
+                      period, `Site hierarchy`) %>%
+      dplyr::summarise(PEPFAR = sum(PEPFAR),
+                       MOH = sum(MOH),
+                       Difference = sum(Difference),
+                       `Weighted difference` = sum(`Weighted difference`)) %>%
+      dplyr::ungroup()
+
+  } else {
+
+    df %<>%
+      dplyr::filter(`Reported on by both` == "both") %>%
+      dplyr::group_by(namelevel3, namelevel4, namelevel5,
+                      namelevel6, indicator,
+                      period, `Site hierarchy`) %>%
+      dplyr::summarise(PEPFAR = sum(PEPFAR),
+                       MOH = sum(MOH),
+                       Difference = sum(Difference),
+                       `Weighted difference` = sum(`Weighted difference`)) %>%
+      dplyr::ungroup()
+
+    }
+
+  return(df)
 
 }
 

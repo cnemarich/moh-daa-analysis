@@ -279,6 +279,8 @@ shinyServer(function(input, output, session) {
         mainPanel(tabsetPanel(
           id = "main-panel",
           type = "tabs",
+          tabPanel(title = "Data Availability",
+                   gt::gt_output("data_availability")),
           tabPanel(title = "Discordance Graph",
                    pickerInput("discordanceInput", "Indicator",
                                choices = c("HTS_TST", "PMTCT_STAT", "PMTCT_ART",
@@ -302,14 +304,16 @@ shinyServer(function(input, output, session) {
                                           multiple = T)),
                        column(6,
                               pickerInput("periodInput", "Period",
-                                          choices = c("FY2019", "FY2018"),
-                                          selected = "FY2019",
+                                          choices = c("FY2019" = 2019,
+                                                      "FY2018" = 2018),
+                                          selected = 2019,
                                           options = list(`actions-box` = TRUE),
                                           multiple = T))
                        )),
                    hr(),
                    dataTableOutput("site_table")),
-          tabPanel(title = "Indicator Analysis", gt_output("indicator_table")),
+          tabPanel(title = "Indicator Analysis",
+                   gt::gt_output("indicator_table")),
           tabPanel(title = "Pivot Table",
                    rpivotTableOutput({
                      "pivot"
@@ -320,6 +324,25 @@ shinyServer(function(input, output, session) {
       ))
     }
   })
+
+  output$data_availability <- gt::render_gt(
+
+    expr = if (ready$ok) {
+
+      analysis_data() %>%
+        purrr::pluck(., "geo") %>%
+        dplyr::filter(CountryName == get_ou_name(input$ou)) %>%
+        dplyr::select(indicator, hasDisagMapping, hasResultsData, generated) %>%
+        gt(rowname_col = "indicator") %>%
+        gt::fmt_datetime(columns = vars(generated))
+
+    } else {
+      NULL
+      },
+    height = px(700),
+    width = "70%"
+
+    )
 
   output$discordance_graph <- renderPlot({
 
@@ -350,7 +373,7 @@ shinyServer(function(input, output, session) {
         purrr::pluck(., "analytics") %>%
         dplyr::filter(indicator %in% site_filter$site_indicator_filter,
                       period %in% site_filter$site_period_filter) %>%
-        site_table_data()
+        site_table_data(., input$ou)
 
       DT::datatable(table_formatted, options = list(pageLength = 50)) %>%
         DT::formatPercentage("Weighted difference")
@@ -360,23 +383,56 @@ shinyServer(function(input, output, session) {
     }
   })
 
-
   output$indicator_table <- render_gt(
 
     expr = if (ready$ok) {
 
       analysis_data() %>%
         purrr::pluck(., "analytics") %>%
-        indicator_table_data() %>%
-        gt() %>%
-        fmt_number(columns = vars(MOH, PEPFAR, Difference), decimals = 0) %>%
-        fmt_percent(columns = vars(`Weighted difference`), decimals = 2)
+        indicator_table_data(.) %>%
+        dplyr::group_by(., indicator) %>%
+        gt(rowname_col = "period") %>%
+        gt::tab_spanner(
+          label = "Reported figures",
+          columns = vars(PEPFAR, MOH, Difference)
+        ) %>%
+        cols_align(
+          align = "center",
+          columns = vars(Sites,
+                         MOH,
+                         PEPFAR,
+                         Difference)
+        ) %>%
+        tab_style(
+          style = cell_text(size = px(12)),
+          locations = cells_body(
+            columns = vars(period,
+                           Sites,
+                           MOH,
+                           PEPFAR,
+                           Difference,
+                           `Weighted difference`))
+        ) %>%
+        gt::fmt_number(columns = vars(MOH,
+                                      PEPFAR,
+                                      Difference),
+                       decimals = 0) %>%
+        gt::fmt_percent(columns = vars(`Weighted difference`),
+                        decimals = 2) %>%
+        gt::cols_label(
+          Sites = html("No. of sites<br>reported by both")
+        ) %>%
+        gt::tab_options(
+          column_labels.font.size = px(16),
+          table.font.size = px(14),
+          data_row.padding = px(5)
+        )
 
     } else {
       NULL
       },
-    height = px(700),
-    width = "70%"
+    height = px(650),
+    width = px(900)
 
   )
 
