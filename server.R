@@ -319,7 +319,11 @@ shinyServer(function(input, output, session) {
                      "pivot"
                      })),
           tabPanel(title = "Country Comparison",
-                   plotOutput("country_comparison"))
+                   img(src = "discordance.png",
+                       height = 263,
+                       width = 526))
+                   # img(src = 'www/discordance.png', align = "center"))
+                   # plotOutput("country_comparison"))
         ))
       ))
     }

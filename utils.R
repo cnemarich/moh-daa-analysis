@@ -118,7 +118,9 @@ d2_analyticsresponse <- function(url, remap_cols = TRUE) {
         plyr::mapvalues(x, metadata$from, metadata$name, warn_missing = FALSE)
       }
 
-    d <- tibble::as_tibble(d$rows) %>% `names<-`(., d$headers$column)
+    d <- tibble::as_tibble(d$rows,
+                           .name_repair = "minimal") %>%
+      `names<-`(., d$headers$column)
     if (remap_cols == TRUE) {
       d <- plyr::colwise(remap_meta)(d)
     }
